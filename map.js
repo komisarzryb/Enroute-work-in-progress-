@@ -425,10 +425,10 @@ function planJourney(){
     res.innerHTML="<p class='muted'>Po "+(t0>0?fmtHM(t0):"")+" brak pociągu S4/S40 z Legionowa do Warszawy Pragi. Sprawdź inną godzinę.</p>";
     return;
   }
-  var h="<div class='plan-leg'><span class='pt'>"+fmtHM(t0)+"</span><span class='pm'>Wyjście z domu. Pieszo <b>"+walkToStop+" min</b> do przystanku <b>Osiedle Bukowy Dworek (2)</b> (przyjazd ok. "+fmtHM(busDep)+")</span></div>";
-  h+="<div class='plan-leg'><span class='pt'>"+fmtHM(busDep)+"</span><span class='pm'>Autobus <b>731</b> w stronę Starostwo → <b>Urząd Miasta (1)</b> o <b>"+fmtHM(busArr)+"</b> (jazda ok. "+(busTime)+" min)</span></div>";
-  h+="<div class='plan-leg'><span class='pt'>"+fmtHM(busArr)+"</span><span class='pm'>Pieszo <b>"+walkToStation+" min</b> z Urzędu Miasta na stację <b>Legionowo</b> (na miejscu ok. "+fmtHM(stationTime)+")</span></div>";
-  h+="<div class='plan-leg'><span class='pt'>"+fmtHM(best.dep)+"</span><span class='pm'>Pociąg <b>"+best.line+"</b> z <b>Legionowa</b> → <b>Warszawa Praga</b> o <b>"+fmtHM(best.arr)+"</b> (jazda ok. "+best.tt+" min)</span></div>";
-  h+="<div class='plan-total'>Dojazd od wyjścia z domu: <b>"+fmtHM(best.arr)+"</b> · łącznie ok. "+(best.arr-t0)+" min</div>";
+  var h="<div class='plan-leg'><span class='pl'>pieszo</span><span class='pm'><b>"+fmtHM(t0)+"–"+fmtHM(busDep)+"</b> z domu do przystanku <b>Osiedle Bukowy Dworek (2)</b></span></div>";
+  h+="<div class='plan-leg'><span class='pl'>731</span><span class='pm'><b>"+fmtHM(busDep)+"–"+fmtHM(busArr)+"</b> do <b>Urzędu Miasta (1)</b> (w stronę Starostwo)</span></div>";
+  h+="<div class='plan-leg'><span class='pl'>pieszo</span><span class='pm'><b>"+fmtHM(busArr)+"–"+fmtHM(stationTime)+"</b> z Urzędu Miasta na dworzec <b>Legionowo</b></span></div>";
+  h+="<div class='plan-leg'><span class='pl'>"+best.line+"</span><span class='pm'><b>"+fmtHM(best.dep)+"–"+fmtHM(best.arr)+"</b> <b>Legionowo</b> → <b>Warszawa Praga</b></span></div>";
+  h+="<div class='plan-total'>Przyjazd <b>Warszawa Praga</b> o <b>"+fmtHM(best.arr)+"</b> · łącznie ok. "+(best.arr-t0)+" min</div>";
   res.innerHTML=h;
 }
