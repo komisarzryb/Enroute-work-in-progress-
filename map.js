@@ -1,4 +1,4 @@
-var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false;
+var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,lastLiveFetch=0;
 
 function initMap(){
   if(mapInitialized)return;
@@ -31,8 +31,10 @@ function selectLine(lineId){
 function clearMap(){
   markers.forEach(function(m){map.removeLayer(m)});
   routeLines.forEach(function(l){map.removeLayer(l)});
+  liveMarkers.forEach(function(m){map.removeLayer(m)});
   markers=[];
   routeLines=[];
+  liveMarkers=[];
 }
 
 function buildLineCoords(line){
@@ -48,8 +50,8 @@ function drawRoute(line){
   var coords=buildLineCoords(line);
   var polyline=L.polyline(coords,{color:line.color,weight:4,opacity:0.7,dashArray:"8,8"}).addTo(map);
   routeLines.push(polyline);
-  line.stops.forEach(function(stop){
-    var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup("<b>"+stop.name+"</b>");
+  line.stops.forEach(function(stop,si){
+    var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup(function(){return stopPopupHTML(line,si)});
     markers.push(marker);
   });
 }
@@ -58,14 +60,21 @@ function updatePositions(){
   if(!activeLine||!map)return;
   markers.filter(function(m){return m._isVehicle}).forEach(function(m){map.removeLayer(m)});
   markers=markers.filter(function(m){return!m._isVehicle});
+  fetchLive();
   var now=new Date();
+  var timeStr=pad(now.getHours())+":"+pad(now.getMinutes());
+  var liveUsed=activeLine.id==="731"&&liveVeh&&liveVeh.length>0;
+  if(liveUsed){
+    drawLiveVehicles();
+    document.getElementById("map-info").innerHTML="<b>"+activeLine.fullName+"</b><p>Pozycje na żywo (ZTM): "+liveVeh.length+" pojazdów</p><strong>Czas: "+timeStr+"</strong>";
+    return;
+  }
   var pos=estimatePosition(activeLine,now);
   if(pos){
     var icon=L.divIcon({className:"vehicle-marker",html:"<div style='background:"+activeLine.color+";color:#fff;padding:6px 10px;border-radius:10px;font-weight:800;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4)'>"+activeLine.name+"</div>",iconAnchor:[30,15]});
     var vehicleMarker=L.marker([pos.lat,pos.lon],{icon:icon}).addTo(map);
     vehicleMarker._isVehicle=true;
     markers.push(vehicleMarker);
-    var timeStr=pad(now.getHours())+":"+pad(now.getMinutes());
     document.getElementById("map-info").innerHTML="<b>"+activeLine.fullName+"</b><p>Estymacja: "+pos.fromStop+" → "+(pos.toStop||"koniec trasy")+"</p><strong>Czas: "+timeStr+"</strong>";
   }else{
     var nextDep=getNextDeparture(activeLine,now);
@@ -103,6 +112,166 @@ function getNextDeparture(line,now){
     if(depMin>currentMin)return line.departures[i];
   }
   return null;
+}
+
+function nowMinFrac(d){return d.getHours()*60+d.getMinutes()+d.getSeconds()/60}
+
+function minToHM(m){
+  m=Math.round(m)%1440;
+  if(m<0)m+=1440;
+  return pad(Math.floor(m/60))+":"+pad(m%60);
+}
+
+function delayText(d){
+  if(d>0.7)return "spóźnienie +"+Math.round(d)+" min";
+  if(d<-0.7)return "przyspieszenie "+Math.round(-d)+" min";
+  return "o czasie";
+}
+
+function cumTimes(line){
+  if(line._cum)return line._cum;
+  var c=[0],s=0;
+  for(var i=0;i<line.travelTimes.length;i++){s+=line.travelTimes[i];c.push(s);}
+  line._cum=c;
+  return c;
+}
+
+function assignVtx(line){
+  if(line._vi)return line._vi;
+  var sh=line.shape||line.stops.map(function(s){return[s.lat,s.lon]});
+  line._sh=sh;
+  var vi=[];
+  line.stops.forEach(function(st){
+    var bi=0,bd=Infinity;
+    for(var j=0;j<sh.length;j++){
+      var d=(sh[j][0]-st.lat)*(sh[j][0]-st.lat)+(sh[j][1]-st.lon)*(sh[j][1]-st.lon);
+      if(d<bd){bd=d;bi=j;}
+    }
+    vi.push(bi);
+  });
+  line._vi=vi;
+  return vi;
+}
+
+function elapsedForPoint(line,lat,lon){
+  var vi=assignVtx(line),sh=line._sh,cum=cumTimes(line);
+  var b=0,bd=Infinity;
+  for(var j=0;j<sh.length;j++){
+    var d=(sh[j][0]-lat)*(sh[j][0]-lat)+(sh[j][1]-lon)*(sh[j][1]-lon);
+    if(d<bd){bd=d;b=j;}
+  }
+  var k=0;
+  for(var i=0;i<vi.length-1;i++){
+    if(b<=vi[i+1]){k=i;break;}
+  }
+  var span=vi[k+1]-vi[k];
+  var frac=span>0?(b-vi[k])/span:0;
+  if(frac<0)frac=0;
+  if(frac>1)frac=1;
+  return {elapsed:cum[k]+line.travelTimes[k]*frac,vi:b};
+}
+
+function tripFor(line,elapsed,now){
+  var cmin=nowMinFrac(now);
+  var expect=elapsed>=0?cmin-elapsed:0;
+  var best=cmin,bd=Infinity;
+  for(var i=0;i<line.departures.length;i++){
+    var p=line.departures[i].split(":");
+    var dm=(+p[0])*60+(+p[1]);
+    var diff=Math.abs(dm-expect);
+    if(diff<bd){bd=diff;best=dm;}
+  }
+  return{depMin:best,delay:cmin-elapsed-best};
+}
+
+function liveETA(line,idx,now){
+  var cum=cumTimes(line),cmin=nowMinFrac(now);
+  var best=null;
+  liveVeh.forEach(function(v){
+    var e=elapsedForPoint(line,v.lat,v.lon);
+    var t=tripFor(line,e.elapsed,now);
+    var eta=t.depMin+cum[idx]+t.delay;
+    if(eta>=cmin&&(best===null||eta<best.eta))best={eta:eta,delay:t.delay,vn:v.vn};
+  });
+  return best;
+}
+
+function stopPopupHTML(line,idx){
+  var st=line.stops[idx],cum=cumTimes(line);
+  var now=new Date(),cmin=nowMinFrac(now);
+  var nextArr=null;
+  line.departures.forEach(function(ds){
+    var p=ds.split(":");
+    var dm=(+p[0])*60+(+p[1]);
+    var a=dm+cum[idx];
+    if(a>=cmin&&(nextArr===null||a<nextArr))nextArr=a;
+  });
+  var h="<b>"+st.name+"</b><br><span style='color:"+line.color+"'>"+line.fullName+"</span><br>";
+  if(nextArr!==null){
+    h+="<b>Najbliższy:</b> "+minToHM(nextArr)+" (za "+Math.round(nextArr-cmin)+" min)<br>";
+  }else{
+    h+="Dziś brak już kursu<br>";
+  }
+  if(line.id==="731"&&liveVeh&&liveVeh.length){
+    var b=liveETA(line,idx,now);
+    if(b){
+      h+="<b>Na żywo:</b> nr "+b.vn+" → "+minToHM(b.eta)+", "+delayText(b.delay);
+    }else{
+      h+="<i>Brak autobusu na żywo przed tym przystankiem</i>";
+    }
+  }else if(line.id!=="731"){
+    h+="<i>Plan, bez danych na żywo</i>";
+  }
+  return h;
+}
+
+function parseWarsawTime(s){
+  if(!s)return NaN;
+  var m=s.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+  if(!m)return NaN;
+  return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime();
+}
+
+function fetchLive(){
+  if(!activeLine||activeLine.id!=="731"||!map)return;
+  var t=Date.now();
+  if(t-lastLiveFetch<15000)return;
+  lastLiveFetch=t;
+  fetch("https://api.um.warszawa.pl/api/action/busestrams_get/?resource_id=f2e5503e-927d-4ad3-9500-4ab9e55deb59&type=1&apikey=fde6064a-316e-4407-bf99-d90693976428")
+    .then(function(r){return r.json()})
+    .then(function(j){
+      var out=[];
+      if(Array.isArray(j&&j.result)){
+        var nowMs=Date.now();
+        j.result.forEach(function(x){
+          if(String(x.Lines)!=="731")return;
+          var la=parseFloat(x.Lat),lo=parseFloat(x.Lon);
+          if(isNaN(la)||isNaN(lo))return;
+          var ageMs=nowMs-parseWarsawTime(x.Time);
+          if(!isNaN(ageMs)&&ageMs>120000)return;
+          out.push({lat:la,lon:lo,vn:String(x.VehicleNumber),br:String(x.Brigade)});
+        });
+      }
+      liveVeh=out;
+      if(activeLine&&activeLine.id==="731")updatePositions();
+    })
+    .catch(function(){});
+}
+
+function drawLiveVehicles(){
+  liveMarkers.forEach(function(m){map.removeLayer(m)});
+  liveMarkers=[];
+  if(!liveVeh||liveVeh.length===0)return;
+  assignVtx(activeLine);
+  var now=new Date();
+  liveVeh.forEach(function(v){
+    var e=elapsedForPoint(activeLine,v.lat,v.lon);
+    var sh=activeLine._sh;
+    var m=L.circleMarker(sh[e.vi],{radius:7,fillColor:"#0f9d58",color:"#fff",weight:2,fillOpacity:0.9}).addTo(map)
+      .bindPopup("Autobus 731 nr <b>"+v.vn+"</b><br>Opóźnienie: <b>"+delayText(tripFor(activeLine,e.elapsed,now).delay)+"</b>");
+    m._isLive=true;
+    liveMarkers.push(m);
+  });
 }
 
 function getRouteBounds(line){
