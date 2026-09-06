@@ -1,1 +1,1 @@
-{"name":"ENROUTE","short_name":"ENROUTE","start_url":".","display":"standalone","background_color":"#07111f","theme_color":"#07111f","icons":[{"src":"IMG_3588.jpeg","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{"name":"ENROUTE","short_name":"ENROUTE","start_url":".","display":"standalone","background_color":"#07111f","theme_color":"#07111f","icons":[{"src":"IMG_3588.jpeg","sizes":"any","type":"image/jpeg","purpose":"any maskable"}]}
