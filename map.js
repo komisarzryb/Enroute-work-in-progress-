@@ -27,6 +27,7 @@ function mergeDir(base,dir){
   o.shape=dir===1?base.shapeRev:base.shape;
   o.travelTimes=dir===1?base.travelTimesRev:base.travelTimes;
   o.departures=dir===1?base.departuresRev:base.departures;
+  if(base.posts)o.posts=base.posts;
   return o;
 }
 
@@ -81,10 +82,51 @@ function drawRoute(line){
   var coords=buildLineCoords(line);
   var polyline=L.polyline(coords,{color:line.color,weight:4,opacity:0.7,dashArray:"8,8"}).addTo(map);
   routeLines.push(polyline);
-  line.stops.forEach(function(stop,si){
-    var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup(function(){return stopPopupHTML(line,si)});
-    markers.push(marker);
+  if(line.posts){
+    var other=mergeDir(LINES.find(function(l){return l.id===line.id}),1-curDir);
+    line.posts.forEach(function(p){
+      var cur=p.dir===curDir;
+      var marker=L.circleMarker([p.lat,p.lon],{radius:cur?6:4,fillColor:cur?line.color:"#5b708b",color:"#fff",weight:cur?2:1,fillOpacity:cur?0.9:0.5}).addTo(map).bindPopup(function(){
+        return postPopupHTML(p,cur?line:other);
+      });
+      markers.push(marker);
+    });
+  }else{
+    line.stops.forEach(function(stop,si){
+      var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup(function(){return stopPopupHTML(line,si)});
+      markers.push(marker);
+    });
+  }
+}
+
+function postPopupHTML(p,line){
+  var cum=cumTimes(line);
+  var now=new Date(),cmin=nowMinFrac(now);
+  var nextArr=null;
+  line.departures.forEach(function(ds){
+    var pp=ds.split(":");
+    var dm=(+pp[0])*60+(+pp[1]);
+    var a=dm+cum[p.si];
+    if(a>=cmin&&(nextArr===null||a<nextArr))nextArr=a;
   });
+  var h="<b>"+p.name+"</b><br><span style='color:"+line.color+"'>"+line.fullName+"</span><br>";
+  if(nextArr!==null){
+    h+="<b>Najbliższy:</b> "+minToHM(nextArr)+" (za "+Math.round(nextArr-cmin)+" min)<br>";
+  }else{
+    h+="Dziś brak już kursu<br>";
+  }
+  if(line.id==="731"&&liveVeh&&liveVeh.length){
+    var b=liveETA(line,p.si,now);
+    if(b){
+      h+="<b>Na żywo:</b> nr "+b.vn+" → "+minToHM(b.eta)+", "+delayText(b.delay);
+    }else{
+      h+="<i>Brak autobusu na żywo przed tym przystankiem</i>";
+    }
+  }else if(line.id!=="731"){
+    h+="<i>Plan, bez danych na żywo</i>";
+  }
+  if(p.dir!==curDir)h+="<br><i>(słupek w drugą stronę)</i>";
+  return h;
 }
 
 function updatePositions(){
