@@ -1,4 +1,4 @@
-var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,lastLiveFetch=0;
+var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,lastLiveFetch=0,curLineId="731",curDir=0;
 
 function initMap(){
   if(mapInitialized)return;
@@ -7,9 +7,12 @@ function initMap(){
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap",maxZoom:18}).addTo(map);
   L.control.zoom({position:"topright"}).addTo(map);
   document.querySelectorAll(".line-btn").forEach(function(btn){
-    btn.addEventListener("click",function(){selectLine(btn.dataset.line)});
+    btn.addEventListener("click",function(){selectLine(btn.dataset.line,curDir)});
   });
-  selectLine("731");
+  document.querySelectorAll(".dir-btn").forEach(function(btn){
+    btn.addEventListener("click",function(){selectLine(curLineId,+btn.dataset.dir)});
+  });
+  selectLine("731",0);
   setInterval(updatePositions,30000);
 }
 
@@ -17,13 +20,41 @@ function refreshMap(){
   if(map)map.invalidateSize();
 }
 
-function selectLine(lineId){
+function mergeDir(base,dir){
+  var o={id:base.id,name:base.name,color:base.color};
+  o.fullName=dir===1?base.fullNameRev:base.fullName;
+  o.stops=dir===1?base.stopsRev:base.stops;
+  o.shape=dir===1?base.shapeRev:base.shape;
+  o.travelTimes=dir===1?base.travelTimesRev:base.travelTimes;
+  o.departures=dir===1?base.departuresRev:base.departures;
+  return o;
+}
+
+function renderDirButtons(){
+  var sel=document.getElementById("dirSel");
+  if(!sel)return;
+  var base=LINES.find(function(l){return l.id===curLineId});
+  if(!base||!base.stopsRev){sel.hidden=true;return;}
+  sel.hidden=false;
+  var ends=[base.stops[base.stops.length-1].name,base.stopsRev[base.stopsRev.length-1].name];
+  var btns=sel.querySelectorAll(".dir-btn");
+  btns.forEach(function(b,i){
+    b.textContent="→ "+ends[i];
+    b.classList.toggle("active",i===curDir);
+  });
+}
+
+function selectLine(lineId,dir){
+  curLineId=lineId;
+  curDir=dir===1?1:0;
   document.querySelectorAll(".line-btn").forEach(function(b){b.classList.remove("active")});
   var btn=document.querySelector('[data-line="'+lineId+'"]');
   if(btn)btn.classList.add("active");
-  activeLine=LINES.find(function(l){return l.id===lineId});
+  var base=LINES.find(function(l){return l.id===lineId});
+  activeLine=mergeDir(base,curDir);
   clearMap();
   drawRoute(activeLine);
+  renderDirButtons();
   updatePositions();
   map.fitBounds(getRouteBounds(activeLine),{padding:[30,30],maxZoom:12});
 }
