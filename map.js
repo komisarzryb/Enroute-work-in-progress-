@@ -35,8 +35,17 @@ function clearMap(){
   routeLines=[];
 }
 
+function buildLineCoords(line){
+  if(!line.shape)return line.stops.map(function(s){return[s.lat,s.lon]});
+  var coords=line.shape.slice();
+  var first=line.stops[0],last=line.stops[line.stops.length-1];
+  if(Math.abs(coords[0][0]-first.lat)>0.002||Math.abs(coords[0][1]-first.lon)>0.002)coords.unshift([first.lat,first.lon]);
+  if(Math.abs(coords[coords.length-1][0]-last.lat)>0.002||Math.abs(coords[coords.length-1][1]-last.lon)>0.002)coords.push([last.lat,last.lon]);
+  return coords;
+}
+
 function drawRoute(line){
-  var coords=line.stops.map(function(s){return[s.lat,s.lon]});
+  var coords=buildLineCoords(line);
   var polyline=L.polyline(coords,{color:line.color,weight:4,opacity:0.7,dashArray:"8,8"}).addTo(map);
   routeLines.push(polyline);
   line.stops.forEach(function(stop){
