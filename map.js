@@ -14,6 +14,13 @@ function initMap(){
   });
   selectLine("731",0);
   setInterval(updatePositions,30000);
+  var go=document.getElementById("planGo");
+  if(go)go.addEventListener("click",planJourney);
+  var pt=document.getElementById("planTime");
+  if(pt)pt.addEventListener("change",planJourney);
+  var pd=document.getElementById("planDest");
+  if(pd)pd.addEventListener("change",planJourney);
+  if(go)planJourney();
 }
 
 function refreshMap(){
@@ -354,3 +361,74 @@ function getRouteBounds(line){
 }
 
 function pad(n){return String(n).padStart(2,"0")}
+
+function parseHM(s){
+  var p=String(s).split(":");
+  return (+p[0])*60+(+p[1]);
+}
+function fmtHM(m){
+  m=Math.round(m)%1440;
+  if(m<0)m+=1440;
+  return pad(Math.floor(m/60))+":"+pad(m%60);
+}
+function sumBetween(arr,a,b){
+  var s=0;
+  for(var k=a;k<b;k++)s+=arr[k];
+  return s;
+}
+function findStop(line,name,prefix){
+  for(var i=0;i<line.stops.length;i++){
+    if(prefix?line.stops[i].name.indexOf(name)===0:line.stops[i].name===name)return i;
+  }
+  return -1;
+}
+function planJourney(){
+  var res=document.getElementById("planResult");
+  if(!res||!LINES.length)return;
+  var t0=parseHM(document.getElementById("planTime").value||"07:00");
+  var walkToStop=10,walkToStation=15;
+  var bus=mergeDir(LINES.find(function(l){return l.id==="731"}),1);
+  var bi=findStop(bus,"Os. Bukowy Dworek",true);
+  var ai=findStop(bus,"Urząd Miasta",false);
+  var busTime=bi>=0&&ai>bi?sumBetween(bus.travelTimes,bi,ai)+1:0;
+  var busDep=null;
+  if(bi>=0&&ai>bi){
+    bus.departures.forEach(function(ds){
+      var dm=parseHM(ds);
+      if(dm>=t0+walkToStop&&busDep===null)busDep=dm;
+    });
+  }
+  if(busDep===null){
+    res.innerHTML="<p class='muted'>Brak kursu 731 ze stacji Osiedle Bukowy Dworek po godz. <b>"+fmtHM(t0+walkToStop)+"</b> (kierunek Legionowo – Urząd Miasta). Wybierz wcześniejszą godzinę.</p>";
+    return;
+  }
+  var busArr=busDep+busTime;
+  var stationTime=busArr+walkToStation;
+  var best=null;
+  ["S4","S40"].forEach(function(tid){
+    var base=LINES.find(function(l){return l.id===tid});
+    if(!base)return;
+    var t=mergeDir(base,1);
+    var ti=findStop(t,"Legionowo",false);
+    var pi=findStop(t,"Warszawa Praga",false);
+    if(ti<0||pi<0||pi<=ti)return;
+    var tt=sumBetween(t.travelTimes,ti,pi);
+    t.departures.forEach(function(ds){
+      var dm=parseHM(ds);
+      if(dm>=stationTime){
+        var arr=dm+tt;
+        if(!best||arr<best.arr)best={line:tid,dep:dm,arr:arr,tt:tt};
+      }
+    });
+  });
+  if(!best){
+    res.innerHTML="<p class='muted'>Po "+(t0>0?fmtHM(t0):"")+" brak pociągu S4/S40 z Legionowa do Warszawy Pragi. Sprawdź inną godzinę.</p>";
+    return;
+  }
+  var h="<div class='plan-leg'><span class='pt'>"+fmtHM(t0)+"</span><span class='pm'>Wyjście z domu. Pieszo <b>"+walkToStop+" min</b> do przystanku <b>Osiedle Bukowy Dworek (2)</b> (przyjazd ok. "+fmtHM(busDep)+")</span></div>";
+  h+="<div class='plan-leg'><span class='pt'>"+fmtHM(busDep)+"</span><span class='pm'>Autobus <b>731</b> w stronę Starostwo → <b>Urząd Miasta (1)</b> o <b>"+fmtHM(busArr)+"</b> (jazda ok. "+(busTime)+" min)</span></div>";
+  h+="<div class='plan-leg'><span class='pt'>"+fmtHM(busArr)+"</span><span class='pm'>Pieszo <b>"+walkToStation+" min</b> z Urzędu Miasta na stację <b>Legionowo</b> (na miejscu ok. "+fmtHM(stationTime)+")</span></div>";
+  h+="<div class='plan-leg'><span class='pt'>"+fmtHM(best.dep)+"</span><span class='pm'>Pociąg <b>"+best.line+"</b> z <b>Legionowa</b> → <b>Warszawa Praga</b> o <b>"+fmtHM(best.arr)+"</b> (jazda ok. "+best.tt+" min)</span></div>";
+  h+="<div class='plan-total'>Dojazd od wyjścia z domu: <b>"+fmtHM(best.arr)+"</b> · łącznie ok. "+(best.arr-t0)+" min</div>";
+  res.innerHTML=h;
+}
