@@ -53,11 +53,23 @@ function planBackward(routeId,targetMin,date,bufferMin){
   var refDate=schedRefDate(date);
   if(bufferMin>0){
     var buffered=planBackwardFor(route,targetMin-bufferMin,refDate);
-    if(buffered){buffered.target=targetMin;return buffered;}
+    if(buffered){reanchorWalks(buffered);buffered.target=targetMin;return buffered;}
   }
   var res=planBackwardFor(route,targetMin,refDate);
   if(res)return res;
   return{fail:true,target:targetMin,route:route.name,date:refDate};
+}
+
+function reanchorWalks(plan){
+  var legs=plan.legs;
+  for(var i=1;i<legs.length;i++){
+    if(legs[i].type==="walk"){
+      legs[i].t1=legs[i-1].t2;
+      legs[i].t2=legs[i-1].t2+legs[i].min;
+    }
+  }
+  plan.leaveHome=legs[0].t1;
+  plan.arriveTarget=legs[legs.length-1].t2;
 }
 
 function planBackwardFor(route,targetMin,refDate){
