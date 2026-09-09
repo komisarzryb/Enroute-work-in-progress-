@@ -56,7 +56,7 @@ function planBackward(routeId,targetMin,date,bufferMin){
     if(buffered){reanchorWalks(buffered);buffered.target=targetMin;return buffered;}
   }
   var res=planBackwardFor(route,targetMin,refDate);
-  if(res)return res;
+  if(res){reanchorWalks(res);res.target=targetMin;return res;}
   return{fail:true,target:targetMin,route:route.name,date:refDate};
 }
 

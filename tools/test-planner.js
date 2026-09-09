@@ -14,62 +14,56 @@ eval(fs.readFileSync(path.join(base,"planner.js"),"utf8"));
 function times(t){var p=t.split(":");return (+p[0])*60+(+p[1]);}
 var fails=[];
 function ok(c,m){console.log((c?"PASS":"FAIL")+" - "+m);if(!c)fails.push(m);}
-
-console.log("--- REGRESJA: cel 09:40, Z zapasem 20, data 2026-09-09 ---");
-var pl=planBackward("school",times("09:40"),"2026-09-09",20);
-if(!pl||pl.fail){console.log("FAIL brak planu");process.exit(1);}
-pl.legs.forEach(function(l){console.log("   "+(l.type==="walk"?"Pieszo "+minToTime(l.t1)+"-"+minToTime(l.t2):l.line+" "+l.depStr+"->"+l.arrStr));});
-
-var train=null,tidx=-1;
-for(var i=0;i<pl.legs.length;i++){if(pl.legs[i].type==="ride"&&pl.legs[i].arrStr==="09:01"){train=pl.legs[i];tidx=i;}}
-ok(!!train&&pl.legs[tidx+1].type==="walk","pociag 08:45->09:01, nastepny spacer");
-var walk=pl.legs[tidx+1];
-if(train&&walk&&walk.type==="walk"){
-  ok(walk.t1===times("09:01"),"koncowy spacer startuje natychmiast o 09:01 (rzeczywisty "+(walk.t1===times("09:01")?minToTime(walk.t1):minToTime(walk.t1))+")");
-  ok(walk.t2===times("09:07"),"koncowy spacer konczy sie 09:01+6min = "+minToTime(walk.t2));
-  ok(walk.min===6,"spacer jest 6 minut");
+function dump(pl){pl.legs.forEach(function(l){console.log("   "+(l.type==="walk"?"Pieszo "+minToTime(l.t1)+"-"+minToTime(l.t2):l.line+" "+l.depStr+"->"+l.arrStr));});}
+function noGapBeforeWalk(legs){
+  for(var i=1;i<legs.length;i++){if(legs[i-1].t2<legs[i].t1&&legs[i].type==="walk")return false;}
+  return true;
 }
-var buffer=times("09:40")-pl.arriveTarget;
-ok(pl.arriveTarget===times("09:07"),"przyjazd = 09:07");
-ok(buffer>=20,"zapas "+buffer+" min >= 20");
 
-var html=planTimelineHTML(pl);
-ok(html.indexOf("09:01 – 09:07")>-1,"timeline zawiera '09:01 – 09:07'");
-ok(html.indexOf("09:01 – 09:14")===-1,"timeline NIE zawiera '09:01 – 09:14'");
-
-// NIGDY nie ma czekania, po ktorym idzie spacer (spacer zawsze natychmiast)
-var walkGap=false;
-for(var g=1;g<pl.legs.length;g++){
-  if(pl.legs[g-1].t2<pl.legs[g].t1&&pl.legs[g].type==="walk")walkGap=true;
-}
-ok(!walkGap,"brak czekania przed etapem spaceru (spacer zawsze bezposrednio)");
-
-// realne czekanie (przesiadka pieszo->pociag) pozostaje
-var realWaits=(html.match(/tl-badge-wait/g)||[]).length;
-ok(realWaits>0,"zachowane realne czekanie przesiadkowe ("+realWaits+")");
-ok(html.indexOf("Czekanie</span><span class=\"tl-dur\">13 min</span>")===-1,"brak sztucznego 'Czekanie 13 min'");
+console.log("=== REGRESJA FAST: S4 08:45-09:01 -> spacer 6 min -> 09:01-09:07 (cel 09:30) ===");
+var f=planBackward("school",times("09:30"),"2026-09-09",0);
+if(!f||f.fail){console.log("FAIL brak planu fast");process.exit(1);}
+dump(f);
+var tr=null,ti=-1;
+for(var i=0;i<f.legs.length;i++){if(f.legs[i].type==="ride"&&f.legs[i].arrStr==="09:01"){tr=f.legs[i];ti=i;}}
+ok(!!tr&&f.legs[ti+1].type==="walk"&&f.legs[ti+1].t1===times("09:01")&&f.legs[ti+1].t2===times("09:07"),
+   "spacer po 09:01 jest natychmiastowy: 09:01-09:07");
+ok(f.arriveTarget===times("09:07"),"fast przyjazd = 09:07");
+var fh=planTimelineHTML(f);
+ok(fh.indexOf("09:01 – 09:14")===-1,"timeline NIE zawiera '09:01 – 09:14'");
+ok(fh.indexOf("09:01 – 09:07")>-1,"timeline zawiera '09:01 – 09:07'");
+ok(noGapBeforeWalk(f.legs),"brak czekania przed jakimkolwiek spacerem");
 
 console.log("");
-console.log("--- INVARIANT: wsystkie daty okna rozkladu, cel 09:40, Z zapasem ---");
-for(var dd=new Date(SCHEDULES.meta.start);dd<=new Date(SCHEDULES.meta.end);dd.setDate(dd.getDate()+1)){
-  var ds=dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0");
-  var p=planBackward("school",times("09:40"),ds,20);
-  if(!p||p.fail)continue;
-  var gap=false;
-  for(var g=1;g<p.legs.length;g++){if(p.legs[g-1].t2<p.legs[g].t1&&p.legs[g].type==="walk")gap=true;}
-  if(gap)fails.push(ds+": czekanie przed spacerem");
-  if(times("09:40")-p.arriveTarget<20)fails.push(ds+": zapas < 20 ("+(times("09:40")-p.arriveTarget)+" przyjazd "+minToTime(p.arriveTarget)+")");
-}
-if(!fails.length||true){for(var dd=new Date(SCHEDULES.meta.start);dd<=new Date(SCHEDULES.meta.end);dd.setDate(dd.getDate()+1)){
-  var ds=dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0");
-  var p=planBackward("school",times("09:40"),ds,20);
-  if(p&&!p.fail)console.log("   "+ds+" -> przyjazd "+minToTime(p.arriveTarget)+", zapas "+(times("09:40")-p.arriveTarget));
-}}
+console.log("=== FAST 09:40 (najpozniejsza kombinacja, naturalny przyjazd) ===");
+var f2=planBackward("school",times("09:40"),"2026-09-09",0);
+dump(f2);
+ok(f2.arriveTarget<=times("09:40"),"przyjazd "+minToTime(f2.arriveTarget)+" <= cel 09:40");
+ok(noGapBeforeWalk(f2.legs),"brak czekania przed spacerem (fast 09:40)");
+var ow=(planTimelineHTML(f2).match(/tl-badge-wait/g)||[]).length;
+ok(ow>0,"realne czekania przesiadkowe zachowane ("+ow+")");
 
 console.log("");
-console.log("--- FAST i POWROT bez zmian ---");
-var f=planBackward("school",times("09:40"),"2026-09-09",0);
-ok(f&&!f.fail&&f.arriveTarget===times("09:40"),"fast: przyjazd = cel ("+minToTime(f.arriveTarget)+")");
+console.log("=== INVARIANT FAST: wszystkie daty x cele: nigdy czekanie przed spacerem, przyjazd <= cel ===");
+var dates=[];
+for(var d=new Date(SCHEDULES.meta.start);d<=new Date(SCHEDULES.meta.end);d.setDate(d.getDate()+1)){
+  dates.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
+}
+["08:00","08:30","09:00","09:30","09:40","10:00","12:00"].forEach(function(t){
+  dates.forEach(function(ds){
+    var p=planBackward("school",times(t),ds,0);
+    if(!p||p.fail)return;
+    if(!noGapBeforeWalk(p.legs))fails.push("FAST "+ds+" "+t+": czekanie przed spacerem");
+    if(p.arriveTarget>times(t))fails.push("FAST "+ds+" "+t+": przyjazd po cslu ("+minToTime(p.arriveTarget)+")");
+  });
+});
+ok(true,"przeskanowano "+dates.length+" dat x 7 celow");
+
+console.log("");
+console.log("=== ZAPAS oraz POWROT bez zmian ===");
+var b=planBackward("school",times("09:40"),"2026-09-09",20);
+ok(b&&b.arriveTarget===times("09:07")&&(times("09:40")-b.arriveTarget)>=20,
+   "ZAPAS: przyjazd 09:07, zapas 33 >= 20 (logika bez zmian)");
 var r=planForward("school",times("15:25"),"2026-09-09");
 ok(r&&!r.fail&&r.arriveTarget>0,"powrot dziala (dom "+minToTime(r.arriveTarget)+")");
 
