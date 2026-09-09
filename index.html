@@ -1,1 +1,377 @@
-<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#07111f"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="style.css"><link rel="apple-touch-icon" href="IMG_3588.jpeg"><title>ENROUTE</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></head><body><div class="app"><header><div class="brand"><img class="logo" src="IMG_3588.jpeg" alt="ENROUTE"><div><b>ENROUTE</b><small>Your journey, calculated.</small></div></div></header><main><section id="home" class="screen active"><div class="hero"><p>Twój dzień</p><h1>Dokąd dziś jedziesz?</h1><div class="inputrow"><input id="schoolTime" type="time" value="09:40"><button id="plan">Zaplanuj</button></div></div><div class="card"><span class="muted">DZIŚ · <span id="todayName">-</span></span><h2 id="todayHeadline">Brak zapisanego planu</h2><p id="todayDetails" class="muted">Ustaw go w zakładce „Więcej".</p></div><div class="card"><span class="muted">DO SZKOŁY</span><h2 id="leave">Wyjdź o 08:12</h2><p id="morning">Przyjazd 09:24 · 16 min zapasu</p></div><div class="card"><span class="muted">POWRÓT</span><h2>Godzina końca</h2><div class="inputrow"><input id="endTime" type="time" value="15:25"><button id="return">Policz</button></div><p id="returnResult" class="muted">ENROUTE policzy proponowany powrót.</p></div></section><section id="map" class="screen"><div class="title"><span>Mapa</span><span class="live">● LIVE</span></div><div class="line-selector"><button class="line-btn active" data-line="731">731</button><button class="line-btn" data-line="S4">S4</button><button class="line-btn" data-line="S40">S40</button><button class="line-btn" data-line="R90">R90</button></div><div class="dir-selector" id="dirSel" hidden><button class="dir-btn" data-dir="0"></button><button class="dir-btn" data-dir="1"></button></div><div id="leaflet-map"></div><div class="card planner" id="planCard"><span class="muted">DOKĄD DZIŚ JADĘ</span><select id="planDest" class="plan-select"><option value="Warszawa Praga">Warszawa Praga</option></select><div class="planrow"><span>Wychodzę o</span><input type="time" id="planTime" value="07:00"><button type="button" id="planGo">Policz trasę</button></div><div id="planResult" class="plan-result"><p class="muted">Wpisz godzinę, a ENROUTE ułoży trasę: pieszo → 731 → pociąg.</p></div></div><div class="card" id="map-info"><b>Wybierz linię</b><p>Kliknij przycisk, aby zobaczyć szacowaną pozycję</p></div></section><section id="search" class="screen"><div class="title">Połączenia</div><div class="search"><input placeholder="Przystanek, stacja lub linia"><button>⌕</button></div><div class="card"><span class="muted">NAJBLIŻSZE</span><h2>731</h2><p>08:17 → 08:42 · +4 min</p></div><div class="card"><span class="muted">SKM S1</span><h2>S1</h2><p>08:49 → 09:18 · planowo</p></div></section><section id="more" class="screen"><div class="title">ENROUTE</div><div class="card"><span class="muted">TWÓJ TYGODNIOWY PLAN</span><h2>Ustaw rozkład dnia</h2><div class="inputrow"><select id="planDay"><option value="Pon">Poniedziałek</option><option value="Wt">Wtorek</option><option value="Sr">Środa</option><option value="Czw">Czwartek</option><option value="Pt">Piątek</option><option value="Sob">Sobota</option><option value="Nd">Niedziela</option></select></div><p class="muted" style="margin-top:16px">TAM (do szkoły)</p><div class="planrow"><span>Wyjście z domu</span><input type="time" id="tamWyjazd"></div><div class="planrow"><span>Pieszo do stacji Legionowo (min)</span><input type="number" min="0" max="60" id="pieszo"></div><div class="planrow"><span>Odjazd pociągu</span><input type="time" id="tamPociag"></div><div class="planrow"><span>Przyjazd na miejsce</span><input type="time" id="tamPrzyjazd"></div><p class="muted" style="margin-top:16px">POWRÓT</p><div class="planrow"><span>Wyjście ze szkoły</span><input type="time" id="powrotWyjazd"></div><div class="planrow"><span>Odjazd pociągu</span><input type="time" id="powrotPociag"></div><div class="planrow"><span>Przyjazd do domu</span><input type="time" id="powrotPrzyjazd"></div><button id="savePlan" style="width:100%;margin-top:14px;background:#1686ff">Zapisz ten dzień</button><p id="saveMsg" class="muted" style="margin-top:8px"></p></div><div class="card"><h2>Statystyki</h2><p>Przejazdy: <b>0</b></p><p>Opóźnienia wykryte: <b>0</b></p></div><button class="egg" id="snake">Easter egg</button></section></main><nav><button data-screen="home">⌂<small>Start</small></button><button data-screen="map">⌖<small>Mapa</small></button><button data-screen="search">⌕<small>Trasy</small></button><button data-screen="more">☷<small>Więcej</small></button></nav></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="transport-data.js"></script><script src="planner.js"></script><script src="map.js"></script><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080e1a">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="IMG_3588.jpeg">
+  <title>ENROUTE</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+<main>
+
+<!-- ==================== START ==================== -->
+<section id="home" class="screen active">
+  <div class="home-header">
+    <h1 class="app-title">ENROUTE</h1>
+    <p class="app-sub" id="greeting">Twój dzień</p>
+  </div>
+
+  <div class="card route-card" id="routeCard">
+    <div class="card-label">DOKĄD DZIS JEDZIESZ?</div>
+    <div class="route-dest">
+      <div class="route-dest-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/><path d="M9 20v-6h6v6"/></svg>
+      </div>
+      <div class="route-dest-info">
+        <div class="route-dest-name">Szkoła</div>
+        <div class="route-dest-sub">Warszawa Praga</div>
+      </div>
+      <div class="route-dest-time" id="schoolTimeDisplay">08:00</div>
+    </div>
+    <div class="route-result" id="homeResult">
+      <div class="route-leave" id="leave">—</div>
+      <div class="route-sub" id="morning"></div>
+    </div>
+    <div class="route-inputs">
+      <input id="schoolTime" type="time" value="09:40">
+      <button id="plan" class="btn btn-primary">Zaplanuj</button>
+    </div>
+    <div id="routeSummary"></div>
+  </div>
+
+  <div class="card timeline-card" id="timelineCard" hidden>
+    <div class="timeline" id="homeTimeline"></div>
+  </div>
+
+  <div class="card route-card return-card">
+    <div class="card-label">POWRÓT</div>
+    <div class="route-inputs">
+      <input id="endTime" type="time" value="15:25">
+      <button id="return" class="btn btn-secondary">Policz</button>
+    </div>
+    <div class="route-result">
+      <div class="route-sub" id="returnResult">Wybierz godzinę końca lekcji</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== MAPA ==================== -->
+<section id="map" class="screen">
+  <div class="map-header">
+    <h2 class="section-title">Mapa</h2>
+    <span class="live-badge">● LIVE</span>
+  </div>
+  <div class="line-selector">
+    <button class="line-btn active" data-line="731">731</button>
+    <button class="line-btn" data-line="S4">S4</button>
+    <button class="line-btn" data-line="S40">S40</button>
+    <button class="line-btn" data-line="R90">R90</button>
+  </div>
+  <div class="dir-selector" id="dirSel" hidden>
+    <button class="dir-btn" data-dir="0"></button>
+    <button class="dir-btn" data-dir="1"></button>
+  </div>
+  <div id="leaflet-map"></div>
+  <div id="map-info" class="map-info"></div>
+
+  <div class="card planner-card">
+    <div class="card-label">PLANER TRASY</div>
+    <div class="planner">
+      <select id="planDest" class="plan-select">
+        <option value="school">Szkoła — Warszawa Praga</option>
+      </select>
+      <div class="inputrow planrow">
+        <input id="planTime" type="time" value="07:00">
+        <button id="planGo" class="btn btn-primary btn-sm">Policz</button>
+      </div>
+      <div id="planResult" class="plan-result"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== SZUKAJ ==================== -->
+<section id="search" class="screen">
+  <h2 class="section-title">Szukanie połączenia</h2>
+  <div class="card">
+    <div class="search-fields">
+      <div class="search-field">
+        <label class="field-label">START</label>
+        <input type="text" placeholder="Legionowo" id="searchFrom" class="field-input">
+      </div>
+      <div class="search-field">
+        <label class="field-label">CEL</label>
+        <input type="text" placeholder="Warszawa Praga" id="searchTo" class="field-input">
+      </div>
+    </div>
+    <div class="search-meta">
+      <input type="date" id="searchDate" class="field-input field-sm">
+      <input type="time" id="searchTime" value="07:00" class="field-input field-sm">
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn active">Wszystkie</button>
+      <button class="filter-btn">Autobus</button>
+      <button class="filter-btn">Pociąg</button>
+    </div>
+    <div id="searchResults" class="search-results">
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <p>Wprowadź punkt startu i cel, aby znaleźć połączenie</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== WIĘCEJ ==================== -->
+<section id="more" class="screen">
+  <h2 class="section-title">Więcej</h2>
+  <div class="menu-list">
+    <button class="menu-item" data-sub="dayplan">
+      <div class="menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="menu-text">
+        <div class="menu-title">Plan dnia</div>
+        <div class="menu-desc">Zarządzaj lekcjami i trasami</div>
+      </div>
+      <div class="menu-chevron">›</div>
+    </button>
+    <button class="menu-item" data-sub="calendar">
+      <div class="menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/></svg>
+      </div>
+      <div class="menu-text">
+        <div class="menu-title">Kalendarz</div>
+        <div class="menu-desc">Dodaj trasę do kalendarza</div>
+      </div>
+      <div class="menu-chevron">›</div>
+    </button>
+    <button class="menu-item" data-sub="settings">
+      <div class="menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </div>
+      <div class="menu-text">
+        <div class="menu-title">Ustawienia</div>
+        <div class="menu-desc">Powiadomienia, dane i wygląd</div>
+      </div>
+      <div class="menu-chevron">›</div>
+    </button>
+    <button class="menu-item" data-sub="about">
+      <div class="menu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      </div>
+      <div class="menu-text">
+        <div class="menu-title">O aplikacji</div>
+        <div class="menu-desc">Informacje o ENROUTE</div>
+      </div>
+      <div class="menu-chevron">›</div>
+    </button>
+  </div>
+</section>
+
+<!-- ==================== PLAN DNIA ==================== -->
+<section id="dayplan" class="screen sub-screen">
+  <div class="sub-header">
+    <button class="back-btn" data-back="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h2 class="section-title">Plan dnia</h2>
+  </div>
+  <div class="weekday-row" id="weekdayRow">
+    <button class="weekday-btn" data-day="0">Pon</button>
+    <button class="weekday-btn" data-day="1">Wt</button>
+    <button class="weekday-btn active" data-day="2">Śr</button>
+    <button class="weekday-btn" data-day="3">Czw</button>
+    <button class="weekday-btn" data-day="4">Pt</button>
+  </div>
+  <div class="lesson-list">
+    <div class="lesson-item">
+      <div class="lesson-time">08:00 – 08:45</div>
+      <div class="lesson-name">Matematyka</div>
+      <div class="lesson-room">Sala 12</div>
+    </div>
+    <div class="lesson-item">
+      <div class="lesson-time">08:55 – 09:40</div>
+      <div class="lesson-name">Język polski</div>
+      <div class="lesson-room">Sala 8</div>
+    </div>
+    <div class="lesson-item">
+      <div class="lesson-time">09:50 – 10:35</div>
+      <div class="lesson-name">Język angielski</div>
+      <div class="lesson-room">Sala 14</div>
+    </div>
+    <div class="lesson-item">
+      <div class="lesson-time">10:45 – 11:30</div>
+      <div class="lesson-name">Fizyka</div>
+      <div class="lesson-room">Sala 3</div>
+    </div>
+    <div class="lesson-item">
+      <div class="lesson-time">11:40 – 12:25</div>
+      <div class="lesson-name">Informatyka</div>
+      <div class="lesson-room">Sala 20</div>
+    </div>
+    <div class="lesson-item">
+      <div class="lesson-time">12:35 – 13:20</div>
+      <div class="lesson-name">Wychowanie fizyczne</div>
+      <div class="lesson-room">Sala gimnastyczna</div>
+    </div>
+    <div class="lesson-item">
+      <div class="lesson-time">13:30 – 14:15</div>
+      <div class="lesson-name">Historia</div>
+      <div class="lesson-room">Sala 5</div>
+    </div>
+  </div>
+  <button class="btn btn-primary btn-full" id="planFromDay">Zaplanuj trasę na dziś</button>
+</section>
+
+<!-- ==================== KALENDARZ ==================== -->
+<section id="calendar" class="screen sub-screen">
+  <div class="sub-header">
+    <button class="back-btn" data-back="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h2 class="section-title">Kalendarz</h2>
+    <button class="header-action" id="calAdd">+</button>
+  </div>
+  <div class="calendar-list">
+    <div class="cal-item cal-item-trip">
+      <div class="cal-item-time">06:47 – 07:40</div>
+      <div class="cal-item-name">Szkoła — wyjazd</div>
+      <div class="cal-item-sub">Legionowo → Warszawa Praga</div>
+    </div>
+    <div class="cal-item">
+      <div class="cal-item-time">08:00 – 08:45</div>
+      <div class="cal-item-name">Matematyka</div>
+    </div>
+    <div class="cal-item">
+      <div class="cal-item-time">08:55 – 09:40</div>
+      <div class="cal-item-name">Język polski</div>
+    </div>
+    <div class="cal-item">
+      <div class="cal-item-time">09:50 – 10:35</div>
+      <div class="cal-item-name">Język angielski</div>
+    </div>
+  </div>
+  <div class="empty-state" id="calEmpty" hidden>
+    <p>Brak wydarzeń w kalendarzu</p>
+  </div>
+</section>
+
+<!-- ==================== USTAWIENIA ==================== -->
+<section id="settings" class="screen sub-screen">
+  <div class="sub-header">
+    <button class="back-btn" data-back="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h2 class="section-title">Ustawienia</h2>
+  </div>
+  <div class="settings-group">
+    <div class="settings-label">POWIADOMIENIA</div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">Przypomnienie o wyjściu</div>
+      </div>
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">Powiadomienia o opóźnieniach</div>
+      </div>
+      <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-label">DANE</div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">Źródło rozkładów</div>
+        <div class="setting-sub">ZTM / SKM / KM</div>
+      </div>
+    </div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-label">WYGLĄD</div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">Tryb ciemny</div>
+      </div>
+      <label class="toggle"><input type="checkbox" checked disabled><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== O APLIKACJI ==================== -->
+<section id="about" class="screen sub-screen">
+  <div class="sub-header">
+    <button class="back-btn" data-back="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <h2 class="section-title">O aplikacji</h2>
+  </div>
+  <div class="about-card">
+    <img class="about-logo" src="IMG_3588.jpeg" alt="ENROUTE">
+    <div class="about-name">ENROUTE</div>
+    <div class="about-slogan">Twoja trasa. Nasz cel.</div>
+    <div class="about-version">v1.0.0</div>
+  </div>
+  <div class="settings-group">
+    <div class="settings-label">ŹRÓDŁA DANYCH</div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">ZTM Warszawa</div>
+        <div class="setting-sub">Rozkłady GTFS · Bus 731</div>
+      </div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">SKM Warszawa</div>
+        <div class="setting-sub">Linie S4, S40</div>
+      </div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-text">
+        <div class="setting-title">API Pojazdów na żywo</div>
+        <div class="setting-sub">api.um.warszawa.pl</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ==================== BOTTOM NAV ==================== -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-screen="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>START</span>
+  </button>
+  <button class="nav-btn" data-screen="map">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    <span>MAPA</span>
+  </button>
+  <button class="nav-btn" data-screen="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span>SZUKAJ</span>
+  </button>
+  <button class="nav-btn" data-screen="more">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    <span>WIĘCEJ</span>
+  </button>
+</nav>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="transport-data.js"></script>
+<script src="schedules.js"></script>
+<script src="planner.js"></script>
+<script src="map.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
