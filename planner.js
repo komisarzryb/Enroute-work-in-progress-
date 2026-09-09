@@ -43,11 +43,24 @@ function queryTrips(lineIds,fromName,toName,date){
   return results;
 }
 
-function planBackward(routeId,targetMin,date){
+var PLAN_MODE="buffer";
+var PLAN_BUFFER=20;
+
+function planBackward(routeId,targetMin,date,bufferMin){
   var route=null;
   for(var i=0;i<ROUTES.length;i++){if(ROUTES[i].id===routeId){route=ROUTES[i];break;}}
   if(!route)return null;
   var refDate=schedRefDate(date);
+  if(bufferMin>0){
+    var buffered=planBackwardFor(route,targetMin-bufferMin,refDate);
+    if(buffered){buffered.target=targetMin;return buffered;}
+  }
+  var res=planBackwardFor(route,targetMin,refDate);
+  if(res)return res;
+  return{fail:true,target:targetMin,route:route.name,date:refDate};
+}
+
+function planBackwardFor(route,targetMin,refDate){
   var legs=[],limit=targetMin,ok=true;
   for(var i=route.legs.length-1;i>=0;i--){
     var leg=route.legs[i];
@@ -71,7 +84,7 @@ function planBackward(routeId,targetMin,date){
       limit=timeToMin(best.dep)-(leg.margin||0);
     }
   }
-  if(!ok)return{fail:true,target:targetMin,route:route?route.name:'',date:refDate};
+  if(!ok)return null;
   return{route:route.name,legs:legs,leaveHome:legs[0].t1,arriveTarget:legs[legs.length-1].t2,target:targetMin,date:refDate};
 }
 
@@ -181,7 +194,7 @@ function renderSchoolPlan(){
 
   if(display)display.textContent=inp.value||"09:40";
   var goal=timeToMin(inp.value||"08:00");
-  var pl=planBackward("school",goal);
+  var pl=planBackward("school",goal,undefined,PLAN_MODE==="buffer"?PLAN_BUFFER:0);
 
   if(!pl||pl.fail){
     leave.textContent="Brak połączenia";
@@ -244,6 +257,16 @@ if(typeof document!=="undefined"){
   if(retBtn)retBtn.addEventListener("click",renderReturnPlan);
   var endInp=document.getElementById("endTime");
   if(endInp)endInp.addEventListener("change",renderReturnPlan);
+  var modeBtns=document.querySelectorAll(".mode-btn");
+  modeBtns.forEach(function(b){
+    b.addEventListener("click",function(){
+      PLAN_MODE=b.getAttribute("data-mode")||"buffer";
+      modeBtns.forEach(function(x){x.classList.toggle("active",x===b)});
+      var info=document.getElementById("planBufferInfo");
+      if(info)info.style.display=PLAN_MODE==="buffer"?"":"none";
+      renderSchoolPlan();
+    });
+  });
   renderSchoolPlan();
   renderReturnPlan();
 }
