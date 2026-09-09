@@ -68,5 +68,26 @@ var r=planForward("school",times("15:25"),"2026-09-09");
 ok(r&&!r.fail&&r.arriveTarget>0,"powrot dziala (dom "+minToTime(r.arriveTarget)+")");
 
 console.log("");
+console.log("=== R90 (Koleje Mazowieckie) w planerze: porownanie S4/S40/R90 ===");
+ok(SCHEDULES.lines.R90&&SCHEDULES.lines.R90.trips.length>0,"R90 obecny w rozkladzie ("+SCHEDULES.lines.R90.trips.length+" tripow)");
+var r90c=queryTrips(["R90"],"Legionowo (80)","Warszawa Praga (80)","2026-09-09");
+ok(r90c.length>0,"queryTrips znajduje R90 Legionowo->Warszawa Praga ("+r90c.length+" kursow)");
+ok(r90c[0].line==="R90"&&r90c[0].arr>"04:30","R90 kursy maja realne godziny (np. "+r90c[0].dep+"->"+r90c[0].arr+")");
+var r90r=queryTrips(["R90"],"Warszawa Praga (80)","Legionowo (80)","2026-09-09");
+ok(r90r.length>0,"R90 dziala tez w strone powrotu (Warszawa Praga->Legionowo)");
+// fast target 09:35 -> jedynie R90 09:11-09:25 miesci sie (S4 09:45 bylby za pozno)
+var fr=planBackward("school",times("09:35"),"2026-09-09",0);
+var frride=null;
+fr.legs.forEach(function(l){if(l.type==="ride"&&l.line!=="731"&&!frride)frride=l;});
+ok(!!frride&&frride.line==="R90","FAST 09:35 wybiera R90 (linia: "+frride.line+")");
+ok(!!frride&&frride.depStr==="09:11"&&frride.arrStr==="09:25","FAST 09:35 -> R90 09:11->09:25");
+ok(noGapBeforeWalk(fr.legs),"FAST 09:35 bez czekania przed spacerem");
+// fast 09:30 nadal S4 (lepszy od R90 w tym celu)
+var fs4=planBackward("school",times("09:30"),"2026-09-09",0);
+var fs4ride=null;
+fs4.legs.forEach(function(l){if(l.type==="ride"&&l.line!=="731"&&!fs4ride)fs4ride=l;});
+ok(!!fs4ride&&fs4ride.line!=="R90","FAST 09:30 nadal S4/S40 (nie faworyzuje R90: "+(fs4ride&&fs4ride.line)+")");
+
+console.log("");
 if(fails.length){console.log("FAIL");fails.forEach(function(x){console.log(" - "+x);});process.exit(1);}
 console.log("WSZYSTKIE TESTY PASS");

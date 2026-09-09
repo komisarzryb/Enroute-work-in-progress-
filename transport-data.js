@@ -428,7 +428,7 @@ var ROUTES=[
    {type:"walk",min:10,label:"z domu do przystanku Osiedle Bukowy Dworek (2)",labelBack:"z przystanku Osiedle Bukowy Dworek (2) do domu"},
    {type:"ride",line:"731",from:"Os. Bukowy Dworek (2)",to:"Urząd Miasta (1)",margin:2,buffer:1},
    {type:"walk",min:15,label:"z Urzędu Miasta na dworzec Legionowo",labelBack:"z dworca Legionowo do Urzędu Miasta"},
-   {type:"ride",line:["S4","S40"],from:"Legionowo (80)",to:"Warszawa Praga (80)",margin:4,buffer:2},
+   {type:"ride",line:["S4","S40","R90"],from:"Legionowo (80)",to:"Warszawa Praga (80)",margin:4,buffer:2},
    {type:"walk",min:6,label:"z dworca Warszawa Praga do szkoły",labelBack:"ze szkoły na dworzec Warszawa Praga"}
   ]}
 ];
