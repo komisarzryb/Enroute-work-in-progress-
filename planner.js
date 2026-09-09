@@ -145,9 +145,18 @@ function planTimelineHTML(plan){
   h+='<div class="tl-label">Wyjście z domu</div>';
   h+='</div></div>';
 
+  var prevT2=plan.legs[0].t1;
   plan.legs.forEach(function(leg,i){
     var isLast=i===plan.legs.length-1;
-    h+='<div class="tl-item">';
+    if(leg.t1>prevT2){
+      h+='<div class="tl-item">';
+      h+='<div class="tl-dot tl-dot-wait"></div>';
+      if(!isLast)h+='<div class="tl-line"></div>';
+      h+='<div class="tl-body">';
+      h+='<div class="tl-row"><span class="tl-badge tl-badge-wait">Czekanie</span><span class="tl-dur">'+(leg.t1-prevT2)+' min</span></div>';
+      h+='<div class="tl-times">'+minToTime(prevT2)+' – '+minToTime(leg.t1)+'</div>';
+      h+='</div></div>';
+    }
     if(leg.type==="walk"){
       h+='<div class="tl-dot tl-dot-walk"></div>';
       if(!isLast)h+='<div class="tl-line"></div>';
@@ -169,6 +178,7 @@ function planTimelineHTML(plan){
       h+='<div class="tl-desc">'+leg.fromName+' → '+leg.toName+'</div>';
       h+='</div></div>';
     }
+    prevT2=leg.t2;
   });
 
   var lastLeg=plan.legs[plan.legs.length-1];

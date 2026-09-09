@@ -61,6 +61,7 @@ main{flex:1;overflow:hidden;position:relative}
 .tl-item:last-child .tl-line{display:none}
 .tl-dot-start,.tl-dot-end{background:var(--accent)}
 .tl-dot-walk{background:var(--walk)}
+.tl-dot-wait{background:var(--warn)}
 .tl-dot-bus{background:var(--bus)}
 .tl-dot-train{background:var(--train)}
 .tl-body{min-height:20px}
@@ -71,6 +72,7 @@ main{flex:1;overflow:hidden;position:relative}
 .tl-badge-bus{background:var(--bus-s);color:var(--bus)}
 .tl-badge-train{background:var(--train-s);color:var(--train)}
 .tl-badge-walk{background:var(--walk-s);color:var(--walk)}
+.tl-badge-wait{background:var(--warn-s);color:var(--warn)}
 .tl-dur{font-size:13px;color:var(--t3);margin-left:auto}
 .tl-times{font-size:15px;font-weight:600;color:var(--t1)}
 .tl-desc{font-size:13px;color:var(--t2);margin-top:2px}
