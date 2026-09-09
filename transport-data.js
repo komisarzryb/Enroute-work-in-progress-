@@ -421,4 +421,14 @@
   travelTimesRev:[4,5,4,4,4,4,4,3,4,5,3,5,4,4,3,3,3,3,4,4,4,4,3,4,7,3,2,4,3,3,3,2,2,5,2,2,2,2,2],
   departuresRev:["05:30","06:15","07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30","22:00"]
 }
+]
+var ROUTES=[
+ {id:"school",name:"Szkoła (Warszawa Praga)",
+  legs:[
+   {type:"walk",min:10,label:"z domu do przystanku Osiedle Bukowy Dworek (2)",labelBack:"z przystanku Osiedle Bukowy Dworek (2) do domu"},
+   {type:"ride",line:"731",dir:1,from:"Os. Bukowy Dworek",to:"Urząd Miasta",margin:2,buffer:1},
+   {type:"walk",min:15,label:"z Urzędu Miasta na dworzec Legionowo",labelBack:"z dworca Legionowo do Urzędu Miasta"},
+   {type:"ride",line:["S4","S40"],dir:1,from:"Legionowo",to:"Warszawa Praga",margin:4,buffer:2},
+   {type:"walk",min:6,label:"z dworca Warszawa Praga do szkoły",labelBack:"ze szkoły na dworzec Warszawa Praga"}
+  ]}
 ];
