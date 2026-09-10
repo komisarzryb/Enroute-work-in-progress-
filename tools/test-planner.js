@@ -145,8 +145,8 @@ var tripBtn=document.querySelectorAll(".trip-btn");
 var rv=document.getElementById("returnResult");
 ok(typeof rv.innerHTML==="string"&&rv.innerHTML.indexOf("WYJŚCIE ZE SZKOŁY")>-1,
    "renderReturnPlan rysuje karte powrotu z hero (bez debug/log)");
-ok(rv.innerHTML.indexOf("W DOMU")>-1&&rv.innerHTML.indexOf("Łączny czas podróży")>-1,
-   "karta powrotu pokazuje podsumowanie W DOMU + czas podrozy");
+ok(rv.innerHTML.indexOf("W domu o")>-1&&rv.innerHTML.indexOf("Łącznie")>-1,
+   "karta powrotu pokazuje podsumowanie 'W domu o 16:34' + 'Łącznie 1h09min'");
 
 console.log("");
 if(fails.length){console.log("FAIL");fails.forEach(function(x){console.log(" - "+x);});process.exit(1);}

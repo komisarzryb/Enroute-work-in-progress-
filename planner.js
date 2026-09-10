@@ -270,12 +270,13 @@ function renderReturnPlan(){
   h+='<div class="return-hero">';
   h+='<div class="return-hero-label">WYJŚCIE ZE SZKOŁY</div>';
   h+='<div class="return-hero-time">'+minToTime(pl.startMin)+'</div>';
+  h+='<div class="return-hero-date">Rozkład z dnia '+pl.date+'</div>';
   h+='</div>';
   h+='<div class="return-route-head">TRASA</div>';
   h+='<div class="rt">'+planTimelineRender(pl,{startLabel:"Wyjście ze szkoły"})+'</div>';
   h+='<div class="return-summary">';
-  h+='<div class="return-at">W DOMU <span class="return-at-time">'+minToTime(pl.arriveTarget)+'</span></div>';
-  h+='<div class="return-total">Łączny czas podróży: <b>'+durationText(pl.arriveTarget-pl.startMin)+'</b></div>';
+  h+='<div class="return-at">W domu o <span class="return-at-time">'+minToTime(pl.arriveTarget)+'</span></div>';
+  h+='<div class="return-total">Łącznie <b>'+durationText(pl.arriveTarget-pl.startMin)+'</b></div>';
   h+='</div>';
   out.innerHTML=h;
 }
