@@ -278,29 +278,51 @@
     </div>
     <div class="cal-grid" id="calGrid"></div>
   </div>
-  <div class="calendar-list">
-    <div class="cal-item cal-item-trip">
-      <div class="cal-item-time">06:47 – 07:40</div>
-      <div class="cal-item-name">Szkoła — wyjazd</div>
-      <div class="cal-item-sub">Legionowo → Warszawa Praga</div>
+
+  <div class="card day-panel">
+    <div class="day-panel-head">
+      <div class="day-panel-date" id="calDayHeader">—</div>
+      <span class="day-panel-badge" id="calDayCount"></span>
     </div>
-    <div class="cal-item">
-      <div class="cal-item-time">08:00 – 08:45</div>
-      <div class="cal-item-name">Matematyka</div>
-    </div>
-    <div class="cal-item">
-      <div class="cal-item-time">08:55 – 09:40</div>
-      <div class="cal-item-name">Język polski</div>
-    </div>
-    <div class="cal-item">
-      <div class="cal-item-time">09:50 – 10:35</div>
-      <div class="cal-item-name">Język angielski</div>
-    </div>
-  </div>
-  <div class="empty-state" id="calEmpty" hidden>
-    <p>Brak wydarzeń w kalendarzu</p>
+    <div class="day-panel-label">PLAN DNIA</div>
+    <div class="day-events" id="calDayEvents"></div>
+    <button class="btn btn-secondary btn-full btn-add-event" id="calAddEvent" aria-label="Dodaj wydarzenie">+ Dodaj wydarzenie</button>
   </div>
 </section>
+
+<!-- ==================== ARKUSZ WYDARZENIA (SHEET) ==================== -->
+<div class="event-sheet" id="evtSheet" role="dialog" aria-modal="true" aria-labelledby="evtSheetTitle" hidden>
+  <div class="event-sheet-grab"></div>
+  <h3 class="event-sheet-title" id="evtSheetTitle">Nowe wydarzenie</h3>
+  <div class="event-sheet-date" id="evtSheetDate"></div>
+  <form id="evtForm" novalidate>
+    <label class="field-label" for="evtName">Nazwa</label>
+    <input type="text" id="evtName" class="field-input" maxlength="120" autocomplete="off">
+    <div class="evt-err" id="evtNameErr" role="alert"></div>
+
+    <div class="evt-time-row">
+      <div class="evt-time-field">
+        <label class="field-label" for="evtStart">Start</label>
+        <input type="time" id="evtStart" class="field-input">
+        <div class="evt-err" id="evtStartErr" role="alert"></div>
+      </div>
+      <div class="evt-time-field">
+        <label class="field-label" for="evtEnd">Koniec</label>
+        <input type="time" id="evtEnd" class="field-input">
+        <div class="evt-err" id="evtEndErr" role="alert"></div>
+      </div>
+    </div>
+
+    <label class="field-label" for="evtDesc">Opis</label>
+    <input type="text" id="evtDesc" class="field-input" maxlength="400" autocomplete="off">
+    <div class="evt-err" id="evtDescErr" role="alert"></div>
+
+    <div class="event-sheet-actions">
+      <button type="button" class="btn btn-secondary" id="evtCancel" aria-label="Anuluj">Anuluj</button>
+      <button type="submit" class="btn btn-primary" id="evtSaveBtn" aria-label="Zapisz wydarzenie">Dodaj</button>
+    </div>
+  </form>
+</div>
 
 <!-- ==================== USTAWIENIA ==================== -->
 <section id="settings" class="screen sub-screen">
@@ -410,6 +432,7 @@
 <script src="transport-data.js"></script>
 <script src="schedules.js"></script>
 <script src="planner.js"></script>
+<script src="events.js"></script>
 <script src="calendar.js"></script>
 <script src="map.js"></script>
 <script src="app.js"></script>
