@@ -14,6 +14,7 @@ function showScreen(id){
     if(typeof initMap==="function"&&!mapInitialized)initMap();
     if(typeof refreshMap==="function")setTimeout(refreshMap,100);
   }
+  if(id==="calendar"&&typeof renderCalendar==="function")renderCalendar();
 }
 
 navBtns.forEach(function(b){

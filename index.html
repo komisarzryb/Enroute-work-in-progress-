@@ -260,6 +260,24 @@
     <h2 class="section-title">Kalendarz</h2>
     <button class="header-action" id="calAdd">+</button>
   </div>
+  <div class="card">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" id="calPrev" aria-label="Poprzedni miesiąc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="cal-head-center">
+        <div class="cal-title" id="calTitle">—</div>
+        <button class="cal-today-btn" id="calTodayBtn">Dzisiaj</button>
+      </div>
+      <button class="cal-nav-btn" id="calNext" aria-label="Następny miesiąc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <div class="cal-weekdays">
+      <span>Pon</span><span>Wt</span><span>Śr</span><span>Czw</span><span>Pt</span><span>Sob</span><span>Ndz</span>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
   <div class="calendar-list">
     <div class="cal-item cal-item-trip">
       <div class="cal-item-time">06:47 – 07:40</div>
@@ -392,6 +410,7 @@
 <script src="transport-data.js"></script>
 <script src="schedules.js"></script>
 <script src="planner.js"></script>
+<script src="calendar.js"></script>
 <script src="map.js"></script>
 <script src="app.js"></script>
 </body>
