@@ -6,7 +6,7 @@ body{margin:0;background:var(--bg);color:var(--t1);font-family:-apple-system,Bli
 
 .app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:520px;margin:0 auto;background:var(--bg)}
 main{flex:1;overflow:hidden;position:relative}
-.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:16px 16px 24px;display:none;-webkit-overflow-scrolling:touch}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:16px 16px calc(24px + env(safe-area-inset-bottom));display:none;-webkit-overflow-scrolling:touch}
 .screen.active{display:block}
 
 .sub-screen{padding-top:0}
@@ -15,7 +15,7 @@ main{flex:1;overflow:hidden;position:relative}
 .app-sub{font-size:14px;color:var(--t2);margin:4px 0 0;font-weight:400}
 .section-title{font-size:22px;font-weight:700;margin:0;color:var(--t1)}
 
-.home-header{padding:24px 4px 16px}
+.home-header{padding:calc(12px + env(safe-area-inset-top)) 4px 16px}
 
 /* ===== CARDS ===== */
 .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin:10px 0;position:relative;overflow:hidden}
@@ -222,9 +222,62 @@ input:focus,.field-input:focus,.plan-select:focus{border-color:var(--accent)}
 /* ===== MISC ===== */
 .muted{color:var(--t3)}
 .hidden{display:none!important}
-.return-card .route-result{margin-top:8px}
 
-/* Loading state */
+/* ===== TRIP TOGGLE (DO SZKOŁY | POWRÓT) ===== */
+.trip-toggle{display:flex;gap:6px;margin:0 0 10px}
+.trip-btn{flex:1;background:var(--bg-card);color:var(--t3);border:1px solid var(--border);border-radius:12px;padding:12px 0;min-height:44px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:1px;transition:background .2s,color .2s,border-color .2s}
+.trip-btn.active{background:var(--accent-s);color:var(--accent);border-color:var(--accent)}
+
+/* ===== RETURN VIEW ===== */
+.return-title-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:14px}
+.return-title{font-size:19px;font-weight:800;color:var(--t1);margin:0}
+.return-sub{font-size:13px;color:var(--t2);font-weight:500}
+.return-result{margin-top:16px}
+.return-hint{color:var(--t3);font-size:14px;padding:6px 2px}
+.return-error{margin:16px 2px 4px}
+.return-error b{color:var(--err)}
+
+.return-hero{background:var(--bg-card-alt);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:16px}
+.return-hero-label{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--t3);text-transform:uppercase}
+.return-hero-time{font-size:34px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;margin-top:2px;line-height:1.1}
+.return-route-head{font-size:11px;font-weight:700;letter-spacing:1.2px;color:var(--t3);text-transform:uppercase;margin:0 0 14px 4px}
+
+.return-summary{background:var(--accent-s);border:1px solid var(--accent);border-radius:var(--r);padding:16px 18px;margin-top:16px;text-align:center}
+.return-at{font-size:14px;font-weight:700;letter-spacing:1.5px;color:var(--t2)}
+.return-at-time{display:block;font-size:34px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;margin-top:2px;line-height:1.1}
+.return-total{font-size:14px;color:var(--t2);margin-top:6px}
+
+/* ===== RETURN TIMELINE ===== */
+.rt{position:relative;padding-left:28px}
+.rt-item{position:relative;padding-bottom:18px}
+.rt-item:last-child{padding-bottom:0}
+.rt-dot{position:absolute;left:-28px;top:3px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg-card);z-index:2}
+.rt-line{position:absolute;left:-23px;top:17px;bottom:-2px;width:2px;background:var(--border);z-index:1}
+.rt-item:last-child .rt-line{display:none}
+.rt-dot-start,.rt-dot-end{background:var(--accent)}
+.rt-dot-walk{background:var(--walk)}
+.rt-dot-wait{background:var(--warn)}
+.rt-dot-bus{background:var(--bus)}
+.rt-dot-train{background:var(--train)}
+.rt-body{min-height:20px}
+.rt-time{font-size:20px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums;line-height:1.2}
+.rt-label{font-size:13px;color:var(--t2);margin-top:1px}
+.rt-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.rt-badge{font-size:12px;font-weight:800;padding:3px 9px;border-radius:7px;display:inline-flex;align-items:center;gap:5px}
+.rt-badge svg{flex-shrink:0}
+.rt-badge-bus{background:var(--bus-s);color:var(--bus)}
+.rt-badge-train{background:var(--train-s);color:var(--train)}
+.rt-badge-walk{background:var(--walk-s);color:var(--walk)}
+.rt-badge-wait{background:var(--warn-s);color:var(--warn)}
+.rt-dur{font-size:13px;color:var(--t3);margin-left:auto}
+.rt-times{font-size:15px;font-weight:600;color:var(--t1)}
+.rt-desc{font-size:13px;color:var(--t2);margin-top:2px}
+
+/* Subtle waits (visually lighter than rides/walks) */
+.rt-item-wait .rt-body{opacity:.75}
+.rt-item-wait .rt-times{font-size:13px}
+
+/* ===== LOADING STATE ===== */
 .route-card.loading{pointer-events:none}
 .route-card.loading::after{content:"Planowanie trasy…";position:absolute;inset:0;background:rgba(8,14,26,.6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--t2);border-radius:var(--r);z-index:5;letter-spacing:.5px}
 

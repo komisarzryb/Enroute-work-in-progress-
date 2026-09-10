@@ -130,31 +130,18 @@ function planForward(routeId,startMin,date){
   return{route:route.name,legs:out,startMin:startMin,arriveTarget:out[out.length-1].t2,date:refDate};
 }
 
-function planSummaryHTML(plan){
-  if(!plan)return "";
-  var h="",prevT2=null;
-  plan.legs.forEach(function(leg){
-    if(prevT2!==null&&leg.t1>prevT2)h+="<br>czekanie <b>"+(leg.t1-prevT2)+" min</b>";
-    var id=leg.type==="ride"?leg.line:"pieszo";
-    var txt=leg.type==="ride"?leg.fromName+" → "+leg.toName:leg.label;
-    var times=leg.type==="ride"?
-      (leg.depStr===leg.arrStr?minToTime(leg.t1)+"–"+minToTime(leg.t2):leg.depStr+"–"+leg.arrStr):
-      minToTime(leg.t1)+"–"+minToTime(leg.t2);
-    h+="<br>"+id+" <b>"+times+"</b> "+txt;
-    prevT2=leg.t2;
-  });
-  return h;
-}
-
-function planTimelineHTML(plan){
+function planTimelineHTML(plan,labels){
   if(!plan||!plan.legs)return "";
+  var L=labels||{};
+  var startLabel=L.startLabel||"Wyjście z domu";
+  var endLabel=L.endLabel||"Przyjazd";
   var h="";
   h+='<div class="tl-item">';
   h+='<div class="tl-dot tl-dot-start"></div>';
   h+='<div class="tl-line"></div>';
   h+='<div class="tl-body">';
   h+='<div class="tl-time">'+minToTime(plan.legs[0].t1)+'</div>';
-  h+='<div class="tl-label">Wyjście z domu</div>';
+  h+='<div class="tl-label">'+startLabel+'</div>';
   h+='</div></div>';
 
   var prevT2=plan.legs[0].t1;
@@ -198,10 +185,99 @@ function planTimelineHTML(plan){
   h+='<div class="tl-dot tl-dot-end"></div>';
   h+='<div class="tl-body">';
   h+='<div class="tl-time">'+minToTime(lastLeg.t2)+'</div>';
-  h+='<div class="tl-label">Przyjazd</div>';
+  h+='<div class="tl-label">'+endLabel+'</div>';
   h+='</div></div>';
 
   return h;
+}
+
+function planTimelineRender(plan,labels){
+  var icons={
+    walk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><circle cx="13" cy="4" r="2"/><path d="M8 21l3-6 3 2 1 4"/><path d="M14 11l3-2 2 3"/><path d="M10 8L8 12h5"/></svg>',
+    bus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><rect x="4" y="2" width="16" height="20" rx="3"/><circle cx="8.5" cy="18" r=".5"/><circle cx="15.5" cy="18" r=".5"/><line x1="4" y1="10" x2="20" y2="10"/></svg>',
+    train:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><rect x="5" y="3" width="14" height="14" rx="2"/><path d="M5 15h14"/><circle cx="9" cy="18" r="2"/><circle cx="15" cy="18" r="2"/><path d="M9 3V1M15 3V1"/></svg>'
+  };
+  var h="";
+  h+='<div class="rt-item rt-item-start">';
+  h+='<div class="rt-dot rt-dot-start"></div>';
+  h+='<div class="rt-body">';
+  h+='<div class="rt-time">'+minToTime(plan.legs[0].t1)+'</div>';
+  h+='<div class="rt-label">'+(labels&&labels.startLabel||"Wyjście")+'</div>';
+  h+='</div></div>';
+
+  var prevT2=plan.legs[0].t1;
+  plan.legs.forEach(function(leg,i){
+    var isLast=i===plan.legs.length-1;
+    if(leg.t1>prevT2){
+      h+='<div class="rt-item rt-item-wait">';
+      h+='<div class="rt-dot rt-dot-wait"></div>';
+      if(!isLast)h+='<div class="rt-line"></div>';
+      h+='<div class="rt-body">';
+      h+='<div class="rt-row"><span class="rt-badge rt-badge-wait">Czekanie</span><span class="rt-dur">'+(leg.t1-prevT2)+' min</span></div>';
+      h+='<div class="rt-times">'+minToTime(prevT2)+' – '+minToTime(leg.t1)+'</div>';
+      h+='</div></div>';
+    }
+    if(leg.type==="walk"){
+      h+='<div class="rt-item">';
+      h+='<div class="rt-dot rt-dot-walk"></div>';
+      if(!isLast)h+='<div class="rt-line"></div>';
+      h+='<div class="rt-body">';
+      h+='<div class="rt-row"><span class="rt-badge rt-badge-walk">'+icons.walk+'Pieszo</span><span class="rt-dur">'+leg.min+' min</span></div>';
+      h+='<div class="rt-times">'+minToTime(leg.t1)+' – '+minToTime(leg.t2)+'</div>';
+      h+='<div class="rt-desc">'+leg.label+'</div>';
+      h+='</div></div>';
+    }else{
+      var dotCls=leg.line==="731"?"rt-dot-bus":"rt-dot-train";
+      var badgeCls=leg.line==="731"?"rt-badge-bus":"rt-badge-train";
+      var ic=leg.line==="731"?icons.bus:icons.train;
+      var dur=Math.round(leg.t2-leg.t1);
+      h+='<div class="rt-item">';
+      h+='<div class="rt-dot '+dotCls+'"></div>';
+      if(!isLast)h+='<div class="rt-line"></div>';
+      h+='<div class="rt-body">';
+      h+='<div class="rt-row"><span class="rt-badge '+badgeCls+'">'+ic+leg.line+'</span><span class="rt-dur">'+dur+' min</span></div>';
+      var times=leg.depStr===leg.arrStr?minToTime(leg.t1)+' – '+minToTime(leg.t2):leg.depStr+' – '+leg.arrStr;
+      h+='<div class="rt-times">'+times+'</div>';
+      h+='<div class="rt-desc">'+leg.fromName+' → '+leg.toName+'</div>';
+      h+='</div></div>';
+    }
+    prevT2=leg.t2;
+  });
+
+  return h;
+}
+
+function durationText(min){
+  var m=Math.round(min);
+  if(m<60)return m+" min";
+  var h=Math.floor(m/60),mm=m-h*60;
+  return h+" h "+String(mm).padStart(2,"0")+" min";
+}
+
+function renderReturnPlan(){
+  var inp=document.getElementById("endTime");
+  var out=document.getElementById("returnResult");
+  var hint=document.getElementById("returnHint");
+  if(!inp||!out)return;
+  if(hint)hint.hidden=true;
+  var start=timeToMin(inp.value||"15:25");
+  var pl=planForward("school",start);
+  if(!pl||pl.fail){
+    out.innerHTML='<div class="return-error">Brak połączenia powrotnego z wyjścia o <b>'+minToTime(start)+'</b>.</div><div class="muted">Nie znaleziono trasy w tym oknie rozkładowym.</div>';
+    return;
+  }
+  var h="";
+  h+='<div class="return-hero">';
+  h+='<div class="return-hero-label">WYJŚCIE ZE SZKOŁY</div>';
+  h+='<div class="return-hero-time">'+minToTime(pl.startMin)+'</div>';
+  h+='</div>';
+  h+='<div class="return-route-head">TRASA</div>';
+  h+='<div class="rt">'+planTimelineRender(pl,{startLabel:"Wyjście ze szkoły"})+'</div>';
+  h+='<div class="return-summary">';
+  h+='<div class="return-at">W DOMU <span class="return-at-time">'+minToTime(pl.arriveTarget)+'</span></div>';
+  h+='<div class="return-total">Łączny czas podróży: <b>'+durationText(pl.arriveTarget-pl.startMin)+'</b></div>';
+  h+='</div>';
+  out.innerHTML=h;
 }
 
 function renderSchoolPlan(){
@@ -247,22 +323,6 @@ function renderSchoolPlan(){
   }
 }
 
-function renderReturnPlan(){
-  var inp=document.getElementById("endTime");
-  var out=document.getElementById("returnResult");
-  if(!inp||!out)return;
-  var start=timeToMin(inp.value||"15:25");
-  var pl=planForward("school",start);
-  if(!pl||pl.fail){
-    out.innerHTML='<span class="muted">Brak połączenia powrotnego z wyjścia o '+minToTime(start)+'.</span>';
-    return;
-  }
-  out.innerHTML='<b>Wyjście ze szkoły o '+minToTime(pl.startMin)+'</b>'
-    +planSummaryHTML(pl)
-    +'<br><b>W domu o '+minToTime(pl.arriveTarget)+'</b>'
-    +'<br><small class="muted">Rozkład z dnia '+pl.date+'</small>';
-}
-
 if(typeof document!=="undefined"){
   var planBtn=document.getElementById("plan");
   if(planBtn)planBtn.addEventListener("click",function(){
@@ -287,6 +347,18 @@ if(typeof document!=="undefined"){
       var info=document.getElementById("planBufferInfo");
       if(info)info.style.display=PLAN_MODE==="buffer"?"":"none";
       renderSchoolPlan();
+    });
+  });
+  var tripBtns=document.querySelectorAll(".trip-btn");
+  tripBtns.forEach(function(b){
+    b.addEventListener("click",function(){
+      var side=b.getAttribute("data-side")||"school";
+      tripBtns.forEach(function(x){x.classList.toggle("active",x===b)});
+      var sv=document.getElementById("schoolView"),rv=document.getElementById("returnView");
+      if(sv)sv.hidden=side!=="school";
+      if(rv)rv.hidden=side!=="return";
+      if(side==="return")renderReturnPlan();
+      else renderSchoolPlan();
     });
   });
   renderSchoolPlan();

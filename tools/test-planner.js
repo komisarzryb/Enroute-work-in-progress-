@@ -89,5 +89,65 @@ fs4.legs.forEach(function(l){if(l.type==="ride"&&l.line!=="731"&&!fs4ride)fs4rid
 ok(!!fs4ride&&fs4ride.line!=="R90","FAST 09:30 nadal S4/S40 (nie faworyzuje R90: "+(fs4ride&&fs4ride.line)+")");
 
 console.log("");
+console.log("=== WIDOK POWROTU (planReturn: hero -> timeline -> podsumowanie) ===");
+var rtPlan=planForward("school",times("15:25"),"2026-09-09");
+var rth=planTimelineRender(rtPlan,{startLabel:"Wyjście ze szkoły"});
+ok(rth.indexOf("Wyjście ze szkoły")>-1,"timeline powrotu ma naglowek startowy");
+ok(rth.indexOf("Pieszo")>-1,"timeline powrotu zawiera etap pieszy");
+ok((rth.match(/rt-badge-bus/g)||[]).length>0,"timeline powrotu zawiera autobus 731 ("+(rth.match(/rt-badge-bus/g)||[]).length+")");
+ok((rth.match(/rt-badge-train/g)||[]).length>0,"timeline powrotu zawiera pociag ("+(rth.match(/rt-badge-train/g)||[]).length+")");
+ok((rth.match(/Czekanie/g)||[]).length>0,"timeline powrotu zawiera czekania ("+(rth.match(/Czekanie/g)||[]).length+")");
+ok(rth.indexOf(minToTime(rtPlan.arriveTarget-rtPlan.legs[rtPlan.legs.length-1].min)+" – "+minToTime(rtPlan.arriveTarget))>-1,
+   "ostatni spacer konczy sie o godzinie powrotu ("+minToTime(rtPlan.arriveTarget)+")");
+var durMin=rtPlan.arriveTarget-rtPlan.startMin;
+var durTxt=durationText(durMin);
+ok(durTxt.indexOf(" h ")>-1||durTxt.indexOf(" min")>-1,"durationText formatuje czas ("+durTxt+" dla "+durMin+" min)");
+
+console.log("");
+console.log("=== PRZELACZNIK DO SZKOŁY | POWRÓT ===");
+var shown={};
+var probe={};
+global.document.getElementById=function(id){
+  if(probe[id])return probe[id];
+  var e=el();e.hidden=false;e.innerHTML="";probe[id]=e;
+  return e;
+};
+var savedClick=el();
+var clickedSide="school";
+var btnHandlers={};
+global.document.querySelectorAll=function(sel){
+  if(sel===".trip-btn")return["school","return"].map(function(s){
+    return{
+      addEventListener:function(ev,fn){btnHandlers[s]=fn;},
+      getAttribute:function(){return s;},
+      classList:{toggle:function(){},add:function(){},remove:function(){}}
+    };
+  });
+  return [];
+};
+eval(fs.readFileSync(path.join(base,"planner.js"),"utf8"));
+var sView=document.getElementById("schoolView"),rView=document.getElementById("returnView");
+ok(sView&&rView,"istnieja widoki schoolView i returnView");
+var idx=fs.readFileSync(path.join(base,"index.html"),"utf8");
+var svHTML=idx.match(/<div id="schoolView"[^>]*>/)[0];
+var rvHTML=idx.match(/<div id="returnView"[^>]*>/)[0];
+ok(svHTML.indexOf("hidden")===-1&&rvHTML.indexOf("hidden")>-1,
+   "w HTML domyslnie widoczny jest widok Do szkoły, return ukryty");
+ok(typeof btnHandlers.return==="function"&&typeof btnHandlers.school==="function",
+   "przelacznik ma obslugi oba przyciski (school i return)");
+btnHandlers.return();
+ok(document.getElementById("schoolView").hidden===true&&document.getElementById("returnView").hidden===false,
+   "po kliknieciu POWRÓT: schoolView ukryty, returnView widoczny");
+btnHandlers.school();
+ok(document.getElementById("schoolView").hidden===false&&document.getElementById("returnView").hidden===true,
+   "po kliknieciu DO SZKOŁY: schoolView widoczny, returnView ukryty");
+var tripBtn=document.querySelectorAll(".trip-btn");
+var rv=document.getElementById("returnResult");
+ok(typeof rv.innerHTML==="string"&&rv.innerHTML.indexOf("WYJŚCIE ZE SZKOŁY")>-1,
+   "renderReturnPlan rysuje karte powrotu z hero (bez debug/log)");
+ok(rv.innerHTML.indexOf("W DOMU")>-1&&rv.innerHTML.indexOf("Łączny czas podróży")>-1,
+   "karta powrotu pokazuje podsumowanie W DOMU + czas podrozy");
+
+console.log("");
 if(fails.length){console.log("FAIL");fails.forEach(function(x){console.log(" - "+x);});process.exit(1);}
 console.log("WSZYSTKIE TESTY PASS");
