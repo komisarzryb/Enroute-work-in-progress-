@@ -128,5 +128,6 @@ function evtUpcoming(limit){
     if(d)return d;
     return(a.ev.start||"00:00").localeCompare(b.ev.start||"00:00");
   });
-  return all.filter(function(x){return x.date>=today;}).slice(0,limit||all.length);
+  var n=limit==null||limit<0?all.length:limit;
+  return all.filter(function(x){return x.date>=today;}).slice(0,n);
 }

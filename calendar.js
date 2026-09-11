@@ -216,6 +216,7 @@ if(typeof document!=="undefined"){
   var evtForm=document.getElementById("evtForm");
   if(evtForm)evtForm.addEventListener("submit",function(e){
     e.preventDefault();
+    if(!calSelected)return;
     var nameEl=document.getElementById("evtName");
     var startEl=document.getElementById("evtStart");
     var endEl=document.getElementById("evtEnd");
@@ -273,10 +274,11 @@ if(typeof document!=="undefined"){
   document.addEventListener("visibilitychange",function(){
     if(!document.hidden&&document.getElementById("calendar").classList.contains("active"))renderCalendar();
   });
-  var calLastToday=calNow().d+"/"+calNow().m;
+  var _tn=calNow();var calLastToday=_tn.y+"/"+_tn.m+"/"+_tn.d;
   setInterval(function(){
+    if(!document.getElementById("calendar").classList.contains("active"))return;
     var t=calNow();
-    var key=t.d+"/"+t.m;
+    var key=t.y+"/"+t.m+"/"+t.d;
     if(key!==calLastToday){calLastToday=key;renderCalendar();}
   },60000);
   if(typeof evtLoad==="function")evtLoad();

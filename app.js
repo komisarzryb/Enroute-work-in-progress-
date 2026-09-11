@@ -9,7 +9,8 @@ function showScreen(id){
   navBtns.forEach(function(b){b.classList.toggle("active",b.dataset.screen===id)});
   var isSub=false;
   subScreens.forEach(function(s){if(s.id===id)isSub=true});
-  document.querySelector(".bottom-nav").style.display=isSub?"none":"flex";
+  var nav=document.querySelector(".bottom-nav");
+  if(nav)nav.style.display=isSub?"none":"flex";
   if(id==="map"){
     if(typeof initMap==="function"&&!mapInitialized)initMap();
     if(typeof refreshMap==="function")setTimeout(refreshMap,100);

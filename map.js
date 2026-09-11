@@ -1,4 +1,4 @@
-var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,curLineId="731",curDir=0;
+var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,curLineId="731",curDir=0,_fetchingLive=false;
 
 function initMap(){
   if(mapInitialized)return;
@@ -13,7 +13,12 @@ function initMap(){
     btn.addEventListener("click",function(){selectLine(curLineId,+btn.dataset.dir)});
   });
   selectLine("731",0);
-  setInterval(updatePositions,30000);
+  setInterval(function(){
+    var mapScr=document.getElementById("map");
+    if(!mapScr||!mapScr.classList.contains("active"))return;
+    if(activeLine&&activeLine.id==="731")fetchLive();
+    else updatePositions();
+  },30000);
   map.on("popupopen",function(e){startStopBoard(e.popup);});
   map.on("popupclose",function(){stopBoardRefreshStop();});
   var go=document.getElementById("planGo");
@@ -61,11 +66,13 @@ function selectLine(lineId,dir){
   var btn=document.querySelector('[data-line="'+lineId+'"]');
   if(btn)btn.classList.add("active");
   var base=LINES.find(function(l){return l.id===lineId});
+  if(!base)return;
   activeLine=mergeDir(base,curDir);
   clearMap();
   drawRoute(activeLine);
   renderDirButtons();
-  updatePositions();
+  if(activeLine&&activeLine.id==="731")fetchLive();
+  else updatePositions();
   map.fitBounds(getRouteBounds(activeLine),{padding:[30,30],maxZoom:12});
 }
 
@@ -92,7 +99,6 @@ function drawRoute(line){
   var polyline=L.polyline(coords,{color:line.color,weight:4,opacity:0.7,dashArray:"8,8"}).addTo(map);
   routeLines.push(polyline);
   if(line.posts){
-    var other=mergeDir(LINES.find(function(l){return l.id===line.id}),1-curDir);
     line.posts.forEach(function(p){
       var cur=p.dir===curDir;
       var mctx=stopBoardCtxFromPost(p);
@@ -159,15 +165,16 @@ function updatePositions(){
   if(!activeLine||!map)return;
   markers.filter(function(m){return m._isVehicle}).forEach(function(m){map.removeLayer(m)});
   markers=markers.filter(function(m){return!m._isVehicle});
-  fetchLive();
   var now=new Date();
-  var timeStr=pad(now.getHours())+":"+pad(now.getMinutes());
+  var timeStr=deptHM(deptWarsawMinFrac(now));
   var liveUsed=activeLine.id==="731"&&liveVeh&&liveVeh.length>0;
   if(liveUsed){
     drawLiveVehicles();
     document.getElementById("map-info").innerHTML="<b>"+activeLine.fullName+"</b><p>Pozycje na żywo (ZTM): "+liveVeh.length+" pojazdów</p><strong>Czas: "+timeStr+"</strong>";
     return;
   }
+  liveMarkers.forEach(function(m){map.removeLayer(m)});
+  liveMarkers=[];
   var pos=estimatePosition(activeLine,now);
   if(pos){
     var icon=L.divIcon({className:"vehicle-marker",html:"<div style='background:"+activeLine.color+";color:#fff;padding:6px 10px;border-radius:10px;font-weight:800;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4)'>"+activeLine.name+"</div>",iconAnchor:[30,15]});
@@ -182,7 +189,7 @@ function updatePositions(){
 }
 
 function estimatePosition(line,now){
-  var currentMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  var currentMin=deptWarsawMinFrac(now);
   var totalTravel=line.travelTimes.reduce(function(a,b){return a+b},0);
   for(var d=0;d<line.departures.length;d++){
     var parts=line.departures[d].split(":");
@@ -190,6 +197,7 @@ function estimatePosition(line,now){
     if(currentMin>=depMin&&currentMin<=depMin+totalTravel){
       var elapsed=currentMin-depMin;
       for(var i=0;i<line.travelTimes.length;i++){
+        if(i+1>=line.stops.length)break;
         if(elapsed<line.travelTimes[i]){
           var ratio=elapsed/line.travelTimes[i];
           return{lat:line.stops[i].lat+ratio*(line.stops[i+1].lat-line.stops[i].lat),lon:line.stops[i].lon+ratio*(line.stops[i+1].lon-line.stops[i].lon),fromStop:line.stops[i].name,toStop:line.stops[i+1].name};
@@ -204,21 +212,13 @@ function estimatePosition(line,now){
 }
 
 function getNextDeparture(line,now){
-  var currentMin=now.getHours()*60+now.getMinutes();
+  var currentMin=Math.floor(deptWarsawMinFrac(now));
   for(var i=0;i<line.departures.length;i++){
     var parts=line.departures[i].split(":");
     var depMin=parseInt(parts[0])*60+parseInt(parts[1]);
     if(depMin>currentMin)return line.departures[i];
   }
   return null;
-}
-
-function nowMinFrac(d){return d.getHours()*60+d.getMinutes()+d.getSeconds()/60}
-
-function minToHM(m){
-  m=Math.round(m)%1440;
-  if(m<0)m+=1440;
-  return pad(Math.floor(m/60))+":"+pad(m%60);
 }
 
 function delayText(d){
@@ -271,7 +271,7 @@ function elapsedForPoint(line,lat,lon){
 }
 
 function tripFor(line,elapsed,now){
-  var cmin=nowMinFrac(now);
+  var cmin=deptWarsawMinFrac(now);
   var expect=elapsed>=0?cmin-elapsed:0;
   var best=cmin,bd=Infinity;
   for(var i=0;i<line.departures.length;i++){
@@ -285,9 +285,12 @@ function tripFor(line,elapsed,now){
 
 function fetchLive(){
   if(!activeLine||activeLine.id!=="731"||!map)return;
+  if(_fetchingLive)return;
+  _fetchingLive=true;
   DEPT.refreshZtm("731",null,function(v){
+    _fetchingLive=false;
     liveVeh=v||[];
-    if(activeLine&&activeLine.id==="731")updatePositions();
+    updatePositions();
   });
 }
 
@@ -301,7 +304,7 @@ function drawLiveVehicles(){
     var e=elapsedForPoint(activeLine,v.lat,v.lon);
     var sh=activeLine._sh;
     var m=L.circleMarker(sh[e.vi],{radius:7,fillColor:"#0f9d58",color:"#fff",weight:2,fillOpacity:0.9}).addTo(map)
-      .bindPopup("Autobus 731 nr <b>"+v.vn+"</b><br>Opóźnienie: <b>"+delayText(tripFor(activeLine,e.elapsed,now).delay)+"</b>");
+      .bindPopup("Autobus 731 nr <b>"+deptEsc(v.vn)+"</b><br>Opóźnienie: <b>"+delayText(tripFor(activeLine,e.elapsed,now).delay)+"</b>");
     m._isLive=true;
     liveMarkers.push(m);
   });
@@ -337,8 +340,9 @@ function findStop(line,name,prefix){
 }
 function planJourney(){
   var res=document.getElementById("planResult");
-  if(!res||!LINES.length)return;
-  var t0=parseHM(document.getElementById("planTime").value||"07:00");
+  var pt=document.getElementById("planTime");
+  if(!res||!pt||!LINES.length)return;
+  var t0=parseHM(pt.value||"07:00");
   var walkToStop=10,walkToStation=15;
   var bus=mergeDir(LINES.find(function(l){return l.id==="731"}),1);
   var bi=findStop(bus,"Os. Bukowy Dworek",true);

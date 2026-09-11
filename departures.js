@@ -222,9 +222,18 @@ function deptWarsawWallEpoch(s){
   if(!s)return NaN;
   var m=String(s).match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
   if(!m)return NaN;
-  var guess=Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]);
-  var off=deptWarsawOffsetMin(new Date(guess));
-  return off===null?guess:guess-off*60000;
+  var inp=Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]);
+  var off=deptWarsawOffsetMin(new Date(inp));
+  if(off!==null)return inp-off*60000;
+  // Fallback bez wsparcia timeZoneName:"longOffset": strefa Warszawy to zawsze UTC+1 (zima)
+  // lub UTC+2 (lato) — wybierz kandydata, którego zegar ścienny zgadza się z wejściem.
+  var t={y:+m[1],mo:+m[2],d:+m[3],h:+m[4],mi:+m[5],s:+m[6]};
+  for(var k=0;k<2;k++){
+    var cand=inp-(k===0?120:60)*60000;
+    var p=deptWarsawParts(new Date(cand));
+    if(p.y===t.y&&p.m===t.mo&&p.dd===t.d&&p.h===t.h&&p.min===t.mi&&p.s===t.s)return cand;
+  }
+  return NaN;
 }
 
 // RT overlay: dopasuj pojazd do kursu (kiedy jest PRZED przystankiem)
@@ -246,7 +255,6 @@ DEPT.applyRt=function(base,dir,si,res,rows,vehicles,nowMinFrac){
       if(diff<bd){bd=diff;best=rows[r];}
     }
     if(best&&bd<=DEPT.RT_MATCH_WINDOW_MIN){
-      if(best.rt)continue;
       best.rt=true;best.delay=Math.round(nowMinFrac-el-best.originDepMin);
       best.etaMin=best.depMin+best.delay;best.veh=vehicles[v].vn;
       matched++;
@@ -267,6 +275,8 @@ DEPT.buildBoard=function(ctx,dateKey,nowMinFrac,vehicles){
     matched=DEPT.applyRt(base,ctx.dir,ctx.si,res,rows,vehicles,nowMinFrac);
   }
   var eff=function(r){return r.rt?r.etaMin:r.depMin;};
+  // "-0.9" = tolerancja ~54 s: kurs bez RT pozostaje widoczny jako "teraz" tuż po czasie,
+  // potem znika (uczciwie, bez zmyślania kolejnych kursów).
   var future=rows.filter(function(r){return eff(r)>=nowMinFrac-0.9;});
   future.sort(function(a,b){return eff(a)-eff(b);});
   var shown=future.slice(0,DEPT.MAX_ROWS);
@@ -300,7 +310,7 @@ DEPT.renderBoard=function(board){
   h+='<div class="dep-stop">'+deptEsc(board.ctx.displayName||board.ctx.name)+"</div>";
   h+='<div class="dep-line">'+deptEsc(board.ctx.lineId)+" → "+deptEsc(board.res.name)+' <span class="dep-code">sł. '+deptEsc(board.res.stopCode==null?"-":board.res.stopCode)+'</span></div>';
   h+='</div>';
-  if(board.isEmpty&&!board.rows.length)h+='<div class="dep-empty">Dziś brak kursów w tym kierunku (rozkład z dnia '+board.refDate+").</div>";
+  if(board.isEmpty&&!board.rows.length)h+='<div class="dep-empty">Dziś brak kursów w tym kierunku (rozkład z dnia '+deptEsc(board.refDate)+").</div>";
   h+='<div class="dep-rows">';
   board.rows.forEach(function(r){
     var t=r.rt?deptHM(r.etaMin):r.depStr;
@@ -339,9 +349,10 @@ DEPT.refreshZtm=function(lineId,fetchImpl,onUpdate){
   };
   var cachedOk=c.vehicles&&t-c.fetchedAt<DEPT.RT_FETCH_DEBOUNCE_MS;
   if(c.pending)return c.pending.then(settled);
-  if(cachedOk)return Promise.resolve(settled(c.vehicles));
+  if(cachedOk)return Promise.resolve(c.vehicles).then(settled);
+  if(c.error&&t-c.fetchedAt<DEPT.RT_FETCH_DEBOUNCE_MS)return Promise.resolve(null).then(settled);
   var fn=fetchImpl||(typeof fetch!=="undefined"?fetch.bind(window||self):null);
-  if(!fn){c.ok=false;return Promise.resolve(settled(null));}
+  if(!fn){c.ok=false;return Promise.resolve(null).then(settled);}
   c.pending=fn(DEPT.ZTM_URL)
     .then(function(r){return r.json();})
     .then(function(j){
@@ -350,7 +361,7 @@ DEPT.refreshZtm=function(lineId,fetchImpl,onUpdate){
       return c.vehicles;
     })
     .catch(function(){
-      c.ok=false;c.error=true;c.fetchedAt=Date.now();
+      c.ok=false;c.error=true;c.fetchedAt=Date.now();c.vehicles=null;
       return null;
     })
     .then(function(v){c.pending=null;return settled(v);});

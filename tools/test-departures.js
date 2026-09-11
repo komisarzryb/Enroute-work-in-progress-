@@ -132,6 +132,35 @@ var fri=deptRefDate("2027-01-15");
 ok(fri==="2026-09-11"||fri==="2026-09-18","data spoza okna -> najbliższy piątek w oknie ("+fri+")");
 ok(new Date(fri+"T12:00:00").getDay()===5,"mapowane dni mają ten sam dzień tygodnia");
 
+console.log("=== RE-ENTRANCY I COOLDOWN (refreshZtm bez rekurencji) ===");
+DEPT.CACHE.ztm={vehicles:null,ok:false,error:false,fetchedAt:0,pending:null};
+var syncFlag=-1,order=[];
+var p0=DEPT.refreshZtm("731",function(){return Promise.resolve({result:[]})},function(){order.push("sync-cb")});
+order.push("after-call");
+ok(order[0]==="after-call","refreshZtm NIE wywołuje callbacku synchronicznie (break rekurencji fetchLive↔updatePositions)");
+var fetches=0;
+DEPT.CACHE.ztm={vehicles:null,ok:false,error:false,fetchedAt:0,pending:null};
+DEPT.refreshZtm("731",function(){fetches++;return Promise.reject(new Error("fail-x"))},function(){}).then(function(v){
+  ok(v===null,"błąd fetch -> uczciwie null");
+  ok(DEPT.CACHE.ztm.vehicles===null,"po błędzie cache wyczyszczony (żadnych starych pozycji jako REALTIME)");
+  var c1=DEPT.CACHE.ztm;
+  DEPT.refreshZtm("731",function(){fetches++;return Promise.reject(new Error("fail-y"))},function(){}).then(function(){
+    ok(fetches===1,"cooldown po błędzie: brak natychmiastowego refetch (debounce ~15 s)");
+    syncFlag=1;
+  });
+});
+
 console.log("");
-if(fails.length){console.log("FAIL");fails.forEach(function(x){console.log(" - "+x);});process.exit(1);}
-console.log("WSZYSTKIE TESTY PASS");
+function done(){
+  console.log("");
+  if(fails.length){console.log("FAIL");fails.forEach(function(x){console.log(" - "+x);});process.exit(1);}
+  console.log("WSZYSTKIE TESTY PASS");
+}
+p0.then(function(){
+  var t=setInterval(function(){
+    if(syncFlag===1){clearInterval(t);done();}
+  },10);
+  setTimeout(function(){ // bezpiecznik na wypadek zawieszenia
+    if(syncFlag!==1){fails.push("timeout w async refreshZtm");done();}
+  },3000);
+});

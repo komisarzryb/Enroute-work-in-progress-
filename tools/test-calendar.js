@@ -129,6 +129,9 @@ var upc=evtUpcoming(10);
 ok(upc.length>0,"evtUpcoming zwraca nadchodzące wydarzenia ("+upc.length+")");
 ok(upc.some(function(x){return x.ev.name==="Dzisiejsze wydarzenie";}),
    "evtUpcoming zawiera wydarzenie z dzisiejszej lokalnej daty ("+todayKey+")");
+ok(evtUpcoming(1).length===1,"evtUpcoming(1) zwraca dokładnie 1 wydarzenie");
+ok(evtUpcoming(0).length===0,"evtUpcoming(0) zwraca 0 wydarzeń (fix: 0 nie oznacza 'wszystkie')");
+ok(evtUpcoming(-5).length>0,"evtUpcoming(ujemne) traktowane jak bez limitu (bez crasha)");
 
 // KONIEC
 if(fail>0){console.log("WSZYSTKIE TESTY FAIL ("+fail+" błędów)");process.exit(1);}
