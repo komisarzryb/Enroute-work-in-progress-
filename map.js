@@ -1,4 +1,4 @@
-var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,lastLiveFetch=0,curLineId="731",curDir=0;
+var map,markers=[],routeLines=[],activeLine=null,mapInitialized=false,liveMarkers=[],liveVeh=null,curLineId="731",curDir=0;
 
 function initMap(){
   if(mapInitialized)return;
@@ -14,6 +14,8 @@ function initMap(){
   });
   selectLine("731",0);
   setInterval(updatePositions,30000);
+  map.on("popupopen",function(e){startStopBoard(e.popup);});
+  map.on("popupclose",function(){stopBoardRefreshStop();});
   var go=document.getElementById("planGo");
   if(go)go.addEventListener("click",planJourney);
   var pt=document.getElementById("planTime");
@@ -93,47 +95,64 @@ function drawRoute(line){
     var other=mergeDir(LINES.find(function(l){return l.id===line.id}),1-curDir);
     line.posts.forEach(function(p){
       var cur=p.dir===curDir;
+      var mctx=stopBoardCtxFromPost(p);
       var marker=L.circleMarker([p.lat,p.lon],{radius:cur?6:4,fillColor:cur?line.color:"#5b708b",color:"#fff",weight:cur?2:1,fillOpacity:cur?0.9:0.5}).addTo(map).bindPopup(function(){
-        return postPopupHTML(p,cur?line:other);
+        return DEPT.loadingHTML(mctx);
       });
+      marker._boardCtx=mctx;
       markers.push(marker);
     });
   }else{
     line.stops.forEach(function(stop,si){
-      var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup(function(){return stopPopupHTML(line,si)});
+      var mctx=stopBoardCtxFromStop(line,si);
+      var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup(function(){return DEPT.loadingHTML(mctx);});
+      marker._boardCtx=mctx;
       markers.push(marker);
     });
   }
 }
 
-function postPopupHTML(p,line){
-  var cum=cumTimes(line);
-  var now=new Date(),cmin=nowMinFrac(now);
-  var nextArr=null;
-  line.departures.forEach(function(ds){
-    var pp=ds.split(":");
-    var dm=(+pp[0])*60+(+pp[1]);
-    var a=dm+cum[p.si];
-    if(a>=cmin&&(nextArr===null||a<nextArr))nextArr=a;
-  });
-  var h="<b>"+p.name+"</b><br><span style='color:"+line.color+"'>"+line.fullName+"</span><br>";
-  if(nextArr!==null){
-    h+="<b>Najbliższy:</b> "+minToHM(nextArr)+" (za "+Math.round(nextArr-cmin)+" min)<br>";
-  }else{
-    h+="Dziś brak już kursu<br>";
-  }
-  if(line.id==="731"&&liveVeh&&liveVeh.length){
-    var b=liveETA(line,p.si,now);
-    if(b){
-      h+="<b>Na żywo:</b> nr "+b.vn+" → "+minToHM(b.eta)+", "+delayText(b.delay);
-    }else{
-      h+="<i>Brak autobusu na żywo przed tym przystankiem</i>";
+// --- tablica odjazdów na przystanku (REALNE dane: RT > GTFS > uczciwy brak) ---
+var stopPopupTimer=null;
+
+function stopBoardCtxFromPost(p){
+  return {lineId:curLineId,dir:p.dir,si:p.si,name:p.name,code:deptCodeFromName(p.name),displayName:p.name,lat:p.lat,lon:p.lon};
+}
+function stopBoardCtxFromStop(line,si){
+  var st=line.stops[si];
+  return {lineId:line.id,dir:curDir,si:si,name:st.name,code:deptCodeFromName(st.name),displayName:st.name,lat:st.lat,lon:st.lon};
+}
+
+function renderStopBoardInto(popup,ctx){
+  popup.setContent(DEPT.loadingHTML(ctx));
+  DEPT.ensureRt(ctx.lineId).then(function(veh){
+    if(!popup.isOpen())return;
+    try{
+      var dateKey=deptWarsawDateKey(new Date());
+      var nowMin=deptWarsawMinFrac(new Date());
+      var board=DEPT.buildBoard(ctx,dateKey,nowMin,veh);
+      popup.setContent(DEPT.renderBoard(board));
+    }catch(e){
+      popup.setContent(DEPT.errorHTML(ctx,"Błąd odczytu rozkładu."));
     }
-  }else if(line.id!=="731"){
-    h+="<i>Plan, bez danych na żywo</i>";
-  }
-  if(p.dir!==curDir)h+="<br><i>(słupek w drugą stronę)</i>";
-  return h;
+  }).catch(function(){
+    if(popup.isOpen())popup.setContent(DEPT.errorHTML(ctx,"Brak połączenia z siecią — odjazdy chwilowo niedostępne."));
+  });
+}
+
+function startStopBoard(popup){
+  stopBoardRefreshStop();
+  var src=popup._source&&popup._source._boardCtx;
+  if(!src)return;
+  renderStopBoardInto(popup,src);
+  stopPopupTimer=setInterval(function(){
+    if(popup.isOpen())renderStopBoardInto(popup,src);
+    else stopBoardRefreshStop();
+  },DEPT.RT_REFRESH_MS);
+}
+
+function stopBoardRefreshStop(){
+  if(stopPopupTimer){clearInterval(stopPopupTimer);stopPopupTimer=null;}
 }
 
 function updatePositions(){
@@ -264,78 +283,12 @@ function tripFor(line,elapsed,now){
   return{depMin:best,delay:cmin-elapsed-best};
 }
 
-function liveETA(line,idx,now){
-  var cum=cumTimes(line),cmin=nowMinFrac(now);
-  var best=null;
-  liveVeh.forEach(function(v){
-    var e=elapsedForPoint(line,v.lat,v.lon);
-    var t=tripFor(line,e.elapsed,now);
-    var eta=t.depMin+cum[idx]+t.delay;
-    if(eta>=cmin&&(best===null||eta<best.eta))best={eta:eta,delay:t.delay,vn:v.vn};
-  });
-  return best;
-}
-
-function stopPopupHTML(line,idx){
-  var st=line.stops[idx],cum=cumTimes(line);
-  var now=new Date(),cmin=nowMinFrac(now);
-  var nextArr=null;
-  line.departures.forEach(function(ds){
-    var p=ds.split(":");
-    var dm=(+p[0])*60+(+p[1]);
-    var a=dm+cum[idx];
-    if(a>=cmin&&(nextArr===null||a<nextArr))nextArr=a;
-  });
-  var h="<b>"+st.name+"</b><br><span style='color:"+line.color+"'>"+line.fullName+"</span><br>";
-  if(nextArr!==null){
-    h+="<b>Najbliższy:</b> "+minToHM(nextArr)+" (za "+Math.round(nextArr-cmin)+" min)<br>";
-  }else{
-    h+="Dziś brak już kursu<br>";
-  }
-  if(line.id==="731"&&liveVeh&&liveVeh.length){
-    var b=liveETA(line,idx,now);
-    if(b){
-      h+="<b>Na żywo:</b> nr "+b.vn+" → "+minToHM(b.eta)+", "+delayText(b.delay);
-    }else{
-      h+="<i>Brak autobusu na żywo przed tym przystankiem</i>";
-    }
-  }else if(line.id!=="731"){
-    h+="<i>Plan, bez danych na żywo</i>";
-  }
-  return h;
-}
-
-function parseWarsawTime(s){
-  if(!s)return NaN;
-  var m=s.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
-  if(!m)return NaN;
-  return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime();
-}
-
 function fetchLive(){
   if(!activeLine||activeLine.id!=="731"||!map)return;
-  var t=Date.now();
-  if(t-lastLiveFetch<15000)return;
-  lastLiveFetch=t;
-  fetch("https://api.um.warszawa.pl/api/action/busestrams_get/?resource_id=f2e5503e-927d-4ad3-9500-4ab9e55deb59&type=1&apikey=fde6064a-316e-4407-bf99-d90693976428")
-    .then(function(r){return r.json()})
-    .then(function(j){
-      var out=[];
-      if(Array.isArray(j&&j.result)){
-        var nowMs=Date.now();
-        j.result.forEach(function(x){
-          if(String(x.Lines)!=="731")return;
-          var la=parseFloat(x.Lat),lo=parseFloat(x.Lon);
-          if(isNaN(la)||isNaN(lo))return;
-          var ageMs=nowMs-parseWarsawTime(x.Time);
-          if(!isNaN(ageMs)&&ageMs>120000)return;
-          out.push({lat:la,lon:lo,vn:String(x.VehicleNumber),br:String(x.Brigade)});
-        });
-      }
-      liveVeh=out;
-      if(activeLine&&activeLine.id==="731")updatePositions();
-    })
-    .catch(function(){});
+  DEPT.refreshZtm("731",null,function(v){
+    liveVeh=v||[];
+    if(activeLine&&activeLine.id==="731")updatePositions();
+  });
 }
 
 function drawLiveVehicles(){
