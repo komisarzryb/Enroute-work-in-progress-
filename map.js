@@ -19,8 +19,8 @@ function initMap(){
     if(activeLine&&activeLine.id==="731")fetchLive();
     else updatePositions();
   },30000);
-  map.on("popupopen",function(e){startStopBoard(e.popup);});
-  map.on("popupclose",function(){stopBoardRefreshStop();});
+  map.on("popupopen",function(e){startStopBoard(e.popup);highlightStopSel(e.popup);});
+  map.on("popupclose",function(){stopBoardRefreshStop();clearStopSel();});
   var go=document.getElementById("planGo");
   if(go)go.addEventListener("click",planJourney);
   var pt=document.getElementById("planTime");
@@ -96,22 +96,27 @@ function buildLineCoords(line){
 
 function drawRoute(line){
   var coords=buildLineCoords(line);
-  var polyline=L.polyline(coords,{color:line.color,weight:4,opacity:0.7,dashArray:"8,8"}).addTo(map);
+  // Subtelna poświata (casing) — niska krycie, nie zasłania przystanków, trasa czytelna
+  var casing=L.polyline(coords,{color:line.color,weight:9,opacity:0.16,lineCap:"round",lineJoin:"round"}).addTo(map);
+  routeLines.push(casing);
+  var polyline=L.polyline(coords,{color:line.color,weight:3.5,opacity:0.95,lineCap:"round",lineJoin:"round",dashArray:"8,8",className:"route-line-core"}).addTo(map);
   routeLines.push(polyline);
   if(line.posts){
     line.posts.forEach(function(p){
       var cur=p.dir===curDir;
       var mctx=stopBoardCtxFromPost(p);
-      var marker=L.circleMarker([p.lat,p.lon],{radius:cur?6:4,fillColor:cur?line.color:"#5b708b",color:"#fff",weight:cur?2:1,fillOpacity:cur?0.9:0.5}).addTo(map).bindPopup(function(){
+      var marker=L.circleMarker([p.lat,p.lon],{radius:cur?6:4,fillColor:cur?line.color:"#5b708b",color:"#fff",weight:cur?2:1,fillOpacity:cur?0.9:0.5,className:cur?"stop-marker stop-marker-route":"stop-marker stop-marker-neu"}).addTo(map).bindPopup(function(){
         return DEPT.loadingHTML(mctx);
       });
       marker._boardCtx=mctx;
+      marker._stopCur=!!cur;
+      marker._stopIsStop=true;
       markers.push(marker);
     });
   }else{
     line.stops.forEach(function(stop,si){
       var mctx=stopBoardCtxFromStop(line,si);
-      var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9}).addTo(map).bindPopup(function(){return DEPT.loadingHTML(mctx);});
+      var marker=L.circleMarker([stop.lat,stop.lon],{radius:6,fillColor:line.color,color:"#fff",weight:2,fillOpacity:0.9,className:"stop-marker stop-marker-route"}).addTo(map).bindPopup(function(){return DEPT.loadingHTML(mctx);});
       marker._boardCtx=mctx;
       markers.push(marker);
     });
@@ -146,6 +151,22 @@ function renderStopBoardInto(popup,ctx){
   });
 }
 
+var _selHalo=null;
+function highlightStopSel(popup){
+  var src=popup._source,mark=popup._source&&popup._source._stopIsStop?popup._source:null;
+  clearStopSel();
+  if(!mark)return;
+  var el=mark.getElement&&mark.getElement();
+  if(el){el.classList.add("stop-marker-sel");if(mark._path)mark._path.classList.add("stop-marker-sel");}
+  var latlng=mark.getLatLng&&mark.getLatLng();
+  if(latlng&&window.L){
+    _selHalo=L.circleMarker([latlng.lat,latlng.lon],{radius:14,fillColor:"transparent",fillOpacity:0,color:"#fff",weight:1.5,opacity:0,className:"stop-halo",interactive:false,pointerEvents:"none"}).addTo(map);
+  }
+}
+function clearStopSel(){
+  markers.forEach(function(m){var el=m&&m.getElement&&m.getElement();if(el){el.classList.remove("stop-marker-sel");if(m._path)m._path.classList.remove("stop-marker-sel");}});
+  if(_selHalo){map.removeLayer(_selHalo);_selHalo=null;}
+}
 function startStopBoard(popup){
   stopBoardRefreshStop();
   var src=popup._source&&popup._source._boardCtx;

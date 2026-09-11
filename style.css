@@ -280,8 +280,7 @@ input:focus{outline:2px solid rgba(34,197,94,.25);outline-offset:1px}
 .about-version{font-size:12px;color:var(--t3);margin-top:8px}
 
 /* ===== LEAFLET POPUPS ===== */
-.leaflet-popup-content-wrapper{background:var(--bg-card)!important;color:var(--t1)!important;border-radius:14px!important;border:1px solid var(--border)!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;padding:0!important}
-.leaflet-popup-tip{background:var(--bg-card)!important;border:1px solid var(--border)!important;box-shadow:none!important}
+.leaflet-popup-content-wrapper{background:var(--bg-card)!important;color:var(--t1)!important;border-radius:14px!important;border:1px solid var(--border)!important;box-shadow:0 8px 32px rgba(0,0,0,.5)!important;padding:0!important}.leaflet-popup-tip{background:var(--bg-card)!important;border:1px solid var(--border)!important;box-shadow:none!important}
 .leaflet-popup-content{margin:12px 14px!important;font-size:13px;line-height:1.5!important;font-family:inherit!important}
 .leaflet-popup-content b{color:var(--t1)}
 .leaflet-popup-content i{color:var(--t3);font-style:normal;font-size:12px}
@@ -370,3 +369,63 @@ input:focus{outline:2px solid rgba(34,197,94,.25);outline-offset:1px}
 @media(min-width:521px){
   .app{border-left:1px solid var(--border);border-right:1px solid var(--border)}
 }
+
+/* ============================================================
+   MAPA — POLISH WIZUALNY (wyłącznie wygląd; logika bez zmian)
+   ============================================================ */
+
+/* Pojazd (divIcon estymowany) — czytelna tubka, wyraźny cień, odróżnialny od przystanków */
+.vehicle-marker{background:none!important;border:none!important}
+.vehicle-marker>div{
+  border-radius:12px!important;
+  font-weight:800!important;
+  font-size:12px!important;
+  letter-spacing:.3px;
+  border:1px solid rgba(255,255,255,.85)!important;
+  box-shadow:0 2px 6px rgba(0,0,0,.38),0 0 0 2px rgba(255,255,255,.08)!important;
+  transition:transform .18s ease;
+}
+.vehicle-marker:hover>div{transform:translateY(-1px)}
+
+/* Trasa: delikatny glow na rdzeniu (poświata) — subtelna, nie zasłania przystanków */
+.route-line-core{transition:stroke-width .2s ease}
+.leaflet-overlay-pane path.route-line-core{
+  filter:drop-shadow(0 0 3px rgba(0,0,0,.45));
+}
+
+/* ===== PRZYSTANKI — 3 stany =====
+   .stop-marker            baza (SVG circle)
+   .stop-marker-route      przystanek na aktywnej trasie (kolor linii, większy, pełny kontur)
+   .stop-marker-neu        przystanek poza trasą / słupki (stonowany, mały)
+   .stop-marker-sel        wybrany (aktywna tablica / popup) — halo i puls */
+.stop-marker{transition:fill-opacity .2s ease,fill .2s ease,r .28s ease}
+.stop-marker-route{filter:drop-shadow(0 0 5px rgba(0,0,0,.55))}
+.stop-marker-neu{opacity:.7}
+.stop-marker-sel{
+  animation:stopPulse 1.6s ease-in-out infinite;
+}
+.stop-marker-sel + .leaflet-interactive{}
+
+@keyframes stopPulse{
+  0%,100%{opacity:1}
+  50%{opacity:.55}
+}
+
+/* Wybrany przystanek: dodatkowa cienka obwódka (ring) — realizowana osobną warstwą halo w map.js */
+.stop-halo{
+  pointer-events:none;
+  animation:haloGrow 2.4s ease-out infinite;
+}
+@keyframes haloGrow{
+  0%{opacity:.5}
+  60%{opacity:.15}
+  100%{opacity:0}
+}
+
+/* Popup odjazdów — wyrównanie typograficzne */
+.leaflet-popup-content{max-height:46vh;overflow-y:auto}
+.leaflet-popup-content-wrapper .dep-row{background:var(--bg-input)}
+.leaflet-popup-content-wrapper .dep-row.busy{animation:depBusy 1.2s ease-in-out infinite}
+@keyframes depBusy{50%{opacity:.5}}
+.leaflet-popup-content-wrapper .dep-badge-rt{animation:rtBlink 2s ease-in-out infinite}
+@keyframes rtBlink{50%{opacity:.6}}
